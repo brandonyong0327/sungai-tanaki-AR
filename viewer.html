@@ -21,7 +21,7 @@
               font-size:14px;font-family:inherit;cursor:pointer}
   #nav button:disabled{opacity:.3}
   #note{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;
-        font-size:15px;line-height:1.8;color:#9db4d4;display:none;z-index:5}
+        font-size:15px;line-height:1.8;color:#9db4d4;display:none;z-index:5;padding:0 24px}
 </style>
 </head>
 <body>
@@ -91,20 +91,58 @@
 
     modelEl.addEventListener("model-error", () => {
       noteEl.style.display = "block";
+      noteEl.innerHTML = "3D 模型载入失败 😢<br><span style='font-size:13px'>按一下重试</span><br>"
+                       + "<button id='retry' style='margin-top:12px;padding:9px 20px;border-radius:999px;"
+                       + "border:0;background:#5fd4e6;color:#08222c;font-weight:700'>retry</button>";
       modelEl.setAttribute("visible", "false");
+      const r = document.getElementById("retry");
+      if (r) r.onclick = () => { noteEl.style.display = "none"; modelEl.setAttribute("src", ""); setTimeout(render, 50); };
     });
     modelEl.addEventListener("model-loaded", () => {
       noteEl.style.display = "none";
       modelEl.setAttribute("visible", "true");
+      fitCamera();
       startAnim();
     });
 
+    // ---- 竖屏/横屏都自动把模型框进画面 ----
+    function fitCamera(){
+      const obj = modelEl.getObject3D("mesh");
+      const camEl = document.querySelector("a-camera");
+      const cam3 = camEl.getObject3D("camera");
+      if (!obj || !cam3) return;
+      sceneEl.object3D.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(obj);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const ctr  = box.getCenter(new THREE.Vector3());
+      const vfov = cam3.fov * Math.PI / 180;
+      const hfov = 2 * Math.atan(Math.tan(vfov / 2) * cam3.aspect);
+      const wide = Math.max(size.x, size.z) * 1.05;
+      const distV = (size.y / 2) / Math.tan(vfov / 2);
+      const distH = (wide / 2) / Math.tan(hfov / 2);
+      const dist = Math.max(distV, distH) * 1.45;
+      camEl.setAttribute("position", { x: 0, y: ctr.y, z: dist });
+    }
+    window.addEventListener("resize", () => setTimeout(fitCamera, 200));
+    window.addEventListener("orientationchange", () => setTimeout(fitCamera, 300));
+
+    let slowTimer = null;
     function render() {
       const p = CONFIG.pages[page - 1];
-      noteEl.style.display = "none";
       titleEl.textContent = "Page " + page + " / " + total;
+      noteEl.style.display = "block";
+      noteEl.innerHTML = "正在载入 3D 模型…";
       modelEl.setAttribute("visible", "true");
       modelEl.setAttribute("src", p.model);
+
+      if (slowTimer) clearTimeout(slowTimer);
+      slowTimer = setTimeout(() => {
+        if (noteEl.style.display !== "none") {
+          noteEl.innerHTML = "正在载入 3D 模型…<br><span style='font-size:12px;color:#7f95b5'>"
+                           + "模型约 11.6 MB，网速慢时要等一下</span>";
+        }
+      }, 6000);
 
       if (p.audio[lang]) {
         audio.src = p.audio[lang];

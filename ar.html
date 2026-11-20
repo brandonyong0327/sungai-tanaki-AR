@@ -7,7 +7,14 @@
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <style>
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:system-ui,sans-serif;color:#fff}
+  html,body{margin:0;height:100%;width:100%;background:#000;overflow:hidden;font-family:system-ui,sans-serif;
+            color:#fff;position:fixed;inset:0;overscroll-behavior:none}
+  /* 关键技术点：强制相机画面铺满全屏（cover 裁切），
+     不依赖 MindAR 内部算出来的 px 尺寸，避免安卓竖屏只剩一条细条 */
+  video{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;
+        object-fit:cover!important;object-position:center!important;z-index:-2!important;background:#000}
+  a-scene{position:fixed!important;inset:0;width:100%!important;height:100%!important;display:block}
+  .a-canvas{width:100%!important;height:100%!important;display:block}
   #hud{position:fixed;left:0;right:0;top:0;padding:12px;display:flex;justify-content:space-between;
        align-items:center;z-index:6;pointer-events:none;gap:8px}
   #hud > *{pointer-events:auto}
@@ -103,7 +110,10 @@
       m.addEventListener("model-error", () => {
         tip.textContent = "⚠️ Page " + pageNo + " 的 3D 模型还没放";
       });
-      m.addEventListener("model-loaded", () => startAnim(m));
+      m.addEventListener("model-loaded", () => {
+        tip.textContent = "✅ Page " + pageNo + " / " + CONFIG.pages.length;
+        startAnim(m);
+      });
       anchor.appendChild(m);
     }
 
@@ -130,8 +140,13 @@
       if (!pageNo) return;
       if (activePage === pageNo) return;
       activePage = pageNo;
-      if (!loaded[pageNo]) { buildModel(anchorIndex, pageNo); loaded[pageNo] = true; }
-      tip.textContent = "✅ Page " + pageNo + " / " + CONFIG.pages.length;
+      if (!loaded[pageNo]) {
+        tip.textContent = "⏳ 正在载入 Page " + pageNo + " 的 3D 模型…";
+        buildModel(anchorIndex, pageNo);
+        loaded[pageNo] = true;
+      } else {
+        tip.textContent = "✅ Page " + pageNo + " / " + CONFIG.pages.length;
+      }
       playNarration(pageNo);
     }
 
@@ -151,6 +166,19 @@
       el.addEventListener("targetFound", () => onFound(i));
       el.addEventListener("targetLost",  () => onLost(i));
     }
+
+    // ---- 相机画面尺寸修正（安卓竖屏常见问题：只剩一条细条 / 黑屏）----
+    function refit(){
+      const sys = sceneEl.systems["mindar-image-system"];
+      if (!sys || !sys.video || !sys.video.videoWidth) return;
+      try { sys._resize(); } catch (e) {}
+    }
+    sceneEl.addEventListener("arReady", () => {
+      refit();
+      [300, 800, 1600, 2600].forEach(t => setTimeout(refit, t));
+    });
+    window.addEventListener("orientationchange", () => setTimeout(refit, 300));
+    window.addEventListener("resize", () => setTimeout(refit, 200));
 
     // 相机打不开 → 提示
     document.querySelector("a-scene").addEventListener("arError", () => {
