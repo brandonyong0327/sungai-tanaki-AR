@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Sungai Tanaki · AR</title>
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:system-ui,sans-serif;color:#fff}
+  #hud{position:fixed;left:0;right:0;top:0;padding:12px;display:flex;justify-content:space-between;
+       align-items:center;z-index:6;pointer-events:none;gap:8px}
+  #hud > *{pointer-events:auto}
+  .pill{color:#fff;text-decoration:none;background:rgba(0,0,0,.5);padding:9px 14px;border-radius:999px;
+        font-size:14px;border:0;font-family:inherit;cursor:pointer}
+  #langbar{display:flex;gap:6px}
+  #langbar button{opacity:.55}
+  #langbar button.on{opacity:1;background:#5fd4e6;color:#08222c;font-weight:700}
+  #tip{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);max-width:92vw;text-align:center;
+       background:rgba(0,0,0,.62);padding:10px 20px;border-radius:999px;font-size:14px;z-index:6;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;
+       background:#0f1b2d;z-index:9;text-align:center;line-height:1.7;font-size:15px}
+</style>
+</head>
+<body>
+  <div id="hud">
+    <a class="pill" href="index.html">‹ Home</a>
+    <div id="langbar">
+      <button class="pill" data-lang="en">EN</button>
+      <button class="pill" data-lang="bm">BM</button>
+    </div>
+    <button class="pill" id="soundBtn">🔊</button>
+  </div>
+
+  <div id="tip">🔍 Point your camera at a book page</div>
+  <div id="err"></div>
+
+  <a-scene mindar-image="imageTargetSrc: ./assets/targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;"
+           embedded vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: false"
+           renderer="colorManagement: true; antialias: true; physicallyCorrectLights: true">
+    <a-light type="ambient" intensity="1.15"></a-light>
+    <a-light type="directional" position="0 2 1" intensity="1.5"></a-light>
+    <a-camera></a-camera>
+
+    <a-entity id="anchor0"  mindar-image-target="targetIndex: 0"></a-entity>
+    <a-entity id="anchor1"  mindar-image-target="targetIndex: 1"></a-entity>
+    <a-entity id="anchor2"  mindar-image-target="targetIndex: 2"></a-entity>
+    <a-entity id="anchor3"  mindar-image-target="targetIndex: 3"></a-entity>
+    <a-entity id="anchor4"  mindar-image-target="targetIndex: 4"></a-entity>
+    <a-entity id="anchor5"  mindar-image-target="targetIndex: 5"></a-entity>
+    <a-entity id="anchor6"  mindar-image-target="targetIndex: 6"></a-entity>
+    <a-entity id="anchor7"  mindar-image-target="targetIndex: 7"></a-entity>
+    <a-entity id="anchor8"  mindar-image-target="targetIndex: 8"></a-entity>
+    <a-entity id="anchor9"  mindar-image-target="targetIndex: 9"></a-entity>
+    <a-entity id="anchor10" mindar-image-target="targetIndex: 10"></a-entity>
+    <a-entity id="anchor11" mindar-image-target="targetIndex: 11"></a-entity>
+  </a-scene>
+
+  <audio id="narration" preload="auto" loop></audio>
+
+  <script src="config.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    let lang = params.get("lang") || localStorage.getItem("lang") || "en";
+    if (!CONFIG.languages.some(l => l.code === lang)) lang = CONFIG.languages[0].code;
+
+    const audio  = document.getElementById("narration");
+    const tip    = document.getElementById("tip");
+    const errBox = document.getElementById("err");
+    const loaded = {};
+    let muted = false, activePage = null;
+
+    // ---- 语言按钮 ----
+    const langBtns = document.querySelectorAll("#langbar button");
+    langBtns.forEach(b => {
+      b.classList.toggle("on", b.dataset.lang === lang);
+      b.onclick = () => {
+        lang = b.dataset.lang;
+        localStorage.setItem("lang", lang);
+        langBtns.forEach(x => x.classList.toggle("on", x.dataset.lang === lang));
+        if (activePage) playNarration(activePage);
+      };
+    });
+
+    function playNarration(pageNo) {
+      const p = CONFIG.pages[pageNo - 1];
+      if (!p || !p.audio[lang]) return;
+      audio.src = p.audio[lang];
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+
+    function buildModel(anchorIndex, pageNo) {
+      const p = CONFIG.pages[pageNo - 1];
+      const anchor = document.getElementById("anchor" + anchorIndex);
+      if (!p || !anchor) return;
+      const m = document.createElement("a-gltf-model");
+      m.setAttribute("src", p.model);
+      m.setAttribute("position", "0 0.1 0");
+      m.setAttribute("scale", "0.21 0.21 0.21");
+      m.addEventListener("model-error", () => {
+        tip.textContent = "⚠️ Page " + pageNo + " 的 3D 模型还没放";
+      });
+      m.addEventListener("model-loaded", () => startAnim(m));
+      anchor.appendChild(m);
+    }
+
+    // ---- 模型自带动画（走路 / 跑步内建 clip）----
+    const sceneEl = document.querySelector("a-scene");
+    const mixers = [];
+    const clipIndex = (CONFIG.animClip === undefined) ? 0 : CONFIG.animClip;
+
+    function startAnim(entity) {
+      if (clipIndex < 0) return;   // -1 = 不播动画（停在该模型的预设姿势）
+      const obj = entity.getObject3D("mesh");
+      if (!obj || !obj.animations || !obj.animations.length) return;
+      const mixer = new THREE.AnimationMixer(obj);
+      mixer.clipAction(obj.animations[Math.min(clipIndex, obj.animations.length - 1)]).play();
+      mixers.push(mixer);
+    }
+    sceneEl.addEventListener("tick", (e) => {
+      const dt = (e.detail.timeDelta || 16) / 1000;
+      for (let i = 0; i < mixers.length; i++) mixers[i].update(dt);
+    });
+
+    function onFound(anchorIndex) {
+      const pageNo = CONFIG.targetMap[anchorIndex];
+      if (!pageNo) return;
+      if (activePage === pageNo) return;
+      activePage = pageNo;
+      if (!loaded[pageNo]) { buildModel(anchorIndex, pageNo); loaded[pageNo] = true; }
+      tip.textContent = "✅ Page " + pageNo + " / " + CONFIG.pages.length;
+      playNarration(pageNo);
+    }
+
+    function onLost(anchorIndex) {
+      const pageNo = CONFIG.targetMap[anchorIndex];
+      if (!pageNo || activePage !== pageNo) return;
+      activePage = null;
+      tip.textContent = "🔍 Point your camera at a book page";
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    // MindAR 的 targetFound / targetLost 事件是发在锚点上的
+    for (let i = 0; i < 12; i++) {
+      const el = document.getElementById("anchor" + i);
+      if (!el) continue;
+      el.addEventListener("targetFound", () => onFound(i));
+      el.addEventListener("targetLost",  () => onLost(i));
+    }
+
+    // 相机打不开 → 提示
+    document.querySelector("a-scene").addEventListener("arError", () => {
+      errBox.style.display = "flex";
+      errBox.innerHTML = "📷 相机打不开<br><br>请允许相机权限，并且一定要用 <b>https://</b> 网址打开。<br>"
+                       + "（用 http 或局域网 IP 打开时，浏览器会拒绝相机）";
+    });
+
+    document.getElementById("soundBtn").onclick = () => {
+      muted = !muted;
+      audio.muted = muted;
+      document.getElementById("soundBtn").textContent = muted ? "🔇" : "🔊";
+    };
+
+    // 手机需要一次点击才允许播放声音
+    window.addEventListener("touchstart", function unlock(){
+      audio.play().then(() => audio.pause()).catch(() => {});
+    }, { once: true });
+  </script>
+</body>
+</html>

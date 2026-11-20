@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title id="title">Storybook AR</title>
+<style>
+  :root{
+    --bg:#0f1b2d; --bg2:#16263f; --card:#1e3354;
+    --text:#eaf2ff; --muted:#9db4d4; --accent:#5fd4e6; --accent2:#ffd166;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 20px 60px}
+  .hero{text-align:center;padding:40px 0 20px}
+  .badge{display:inline-block;background:var(--card);color:var(--accent);padding:6px 14px;border-radius:999px;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+  h1{font-size:clamp(28px,6vw,52px);margin:14px 0 6px;line-height:1.1}
+  h1 em{color:var(--accent);font-style:normal}
+  .sub{color:var(--muted);font-size:16px;max-width:560px;margin:0 auto}
+  .actions{margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:13px 26px;border-radius:12px;text-decoration:none;font-weight:600;border:0;cursor:pointer;font-size:15px}
+  .btn-primary{background:var(--accent);color:#08222c}
+  .btn-ghost{background:transparent;color:var(--text);border:1px solid #3a5a8a}
+  .stats{display:flex;gap:28px;justify-content:center;margin-top:28px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+  .stats b{display:block;color:var(--text);font-size:22px}
+
+  h2{font-size:24px;margin:48px 0 6px}
+  .lead{color:var(--muted);margin-bottom:18px}
+
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px}
+  .step{background:var(--card);border-radius:14px;padding:18px}
+  .step .n{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#08222c;display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:10px}
+
+  .langs{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .lang{padding:10px 18px;border-radius:10px;background:var(--card);color:var(--text);text-decoration:none;border:1px solid transparent;font-weight:600;cursor:pointer}
+  .lang.active{border-color:var(--accent);color:var(--accent)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:18px}
+  .cell{background:var(--card);border-radius:12px;overflow:hidden;text-decoration:none;color:var(--text);display:block;aspect-ratio:3/4;position:relative}
+  .cell .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700;color:#4f74a8}
+  .cell img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .cell span{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(0,0,0,.6);padding:4px 9px;border-radius:999px;font-size:12px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  footer{margin-top:60px;color:var(--muted);font-size:13px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <span class="badge">Augmented Reality Storybook</span>
+    <h1 id="bookTitle">Storybook <em>AR</em></h1>
+    <p class="sub" id="bookSub">Point your phone at the book and watch each page come alive in 3D.</p>
+    <div class="actions">
+      <a class="btn btn-primary" id="startBtn" href="ar.html">Start scanning</a>
+      <a class="btn btn-ghost" id="viewBtn" href="viewer.html?page=1">No book? View in 3D</a>
+    </div>
+    <div class="stats">
+      <div><b id="statPages">0</b> story pages</div>
+      <div><b id="statLive">0</b> AR page live</div>
+      <div><b id="statLangs">0</b> narration languages</div>
+    </div>
+  </div>
+
+  <h2>Pick a language</h2>
+  <p class="lead">Choose narration language. It will be remembered for scanning.</p>
+  <div class="langs" id="langRow"></div>
+
+  <h2>How it works</h2>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><b>Allow camera</b><p style="color:var(--muted);margin-top:6px">Tap "Start scanning" and allow camera access. Everything runs in your browser.</p></div>
+    <div class="step"><div class="n">2</div><b>Point at a page</b><p style="color:var(--muted);margin-top:6px">Lay the book flat under bright light, hold the phone 25–40 cm away.</p></div>
+    <div class="step"><div class="n">3</div><b>Watch it come alive</b><p style="color:var(--muted);margin-top:6px">A 3D scene appears on the page and the story is read aloud.</p></div>
+  </div>
+
+  <h2>Every page, a small world</h2>
+  <p class="lead">Tap any scene to explore it in 3D, even without the book.</p>
+  <div class="grid" id="grid"></div>
+
+  <footer>Works on Chrome (Android) and Safari (iPhone). Camera images are processed on your device only.</footer>
+</div>
+
+<script src="config.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  let lang = params.get("lang") || localStorage.getItem("lang") || "en";
+
+  document.title = CONFIG.bookTitle + " · AR";
+  document.getElementById("bookTitle").innerHTML =
+    CONFIG.bookTitle.replace(" ", " <em>") + "</em>";
+  document.getElementById("bookSub").textContent =
+    lang === "bm" ? CONFIG.subtitleBM : CONFIG.subtitle;
+  document.getElementById("statPages").textContent = CONFIG.pages.length;
+  document.getElementById("statLive").textContent = CONFIG.targetMap.length;
+  document.getElementById("statLangs").textContent = CONFIG.languages.length;
+
+  // language buttons
+  const row = document.getElementById("langRow");
+  CONFIG.languages.forEach(L => {
+    const b = document.createElement("button");
+    b.className = "lang" + (L.code === lang ? " active" : "");
+    b.textContent = L.label + " · " + L.name;
+    b.onclick = () => {
+      localStorage.setItem("lang", L.code);
+      location.href = "index.html?lang=" + L.code;
+    };
+    row.appendChild(b);
+  });
+
+  // start button keeps the language
+  document.getElementById("startBtn").href = "ar.html?lang=" + lang;
+  document.getElementById("viewBtn").href =
+    "viewer.html?page=" + (CONFIG.targetMap[0] || 1) + "&lang=" + lang;
+
+  // scene grid
+  const grid = document.getElementById("grid");
+  const live = CONFIG.targetMap;
+  CONFIG.pages.forEach((p, i) => {
+    const num = i + 1;
+    const a = document.createElement("a");
+    a.className = "cell";
+    a.href = "viewer.html?page=" + num + "&lang=" + lang;
+    const label = (lang === "bm" && p.titleBM) ? p.titleBM : p.title;
+    a.innerHTML = `<div class="ph">${num}</div>
+        <img src="${p.thumb}" alt="${label}" onerror="this.remove()"/>
+        <span>${live.includes(num) ? "📷 " : ""}${num}. ${label}</span>`;
+    grid.appendChild(a);
+  });
+</script>
+</body>
+</html>
