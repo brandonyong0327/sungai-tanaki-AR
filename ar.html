@@ -28,6 +28,8 @@
        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;
        background:#0f1b2d;z-index:9;text-align:center;line-height:1.7;font-size:15px}
+  #dbg{position:fixed;left:8px;bottom:64px;z-index:7;font:11px/1.5 ui-monospace,monospace;
+       background:rgba(0,0,0,.65);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
 </style>
 </head>
 <body>
@@ -41,6 +43,7 @@
   </div>
 
   <div id="tip">🔍 Point your camera at a book page</div>
+  <div id="dbg"></div>
   <div id="err"></div>
 
   <a-scene mindar-image="imageTargetSrc: ./assets/targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;"
@@ -165,6 +168,22 @@
       if (!el) continue;
       el.addEventListener("targetFound", () => onFound(i));
       el.addEventListener("targetLost",  () => onLost(i));
+    }
+
+    // ---- 调试面板（网址加 ?debug=1 打开）----
+    const dbgEl = document.getElementById("dbg");
+    if (params.get("debug") === "1") {
+      dbgEl.style.display = "block";
+      setInterval(() => {
+        const s = sceneEl.systems["mindar-image-system"];
+        const v = s && s.video;
+        const r = v ? v.getBoundingClientRect() : null;
+        dbgEl.textContent =
+          "video " + (v ? v.videoWidth + "×" + v.videoHeight : "-") +
+          "\ndraw  " + (r ? Math.round(r.width) + "×" + Math.round(r.height) : "-") +
+          "\nview  " + innerWidth + "×" + innerHeight +
+          "\nfound " + (activePage || "-");
+      }, 700);
     }
 
     // ---- 相机画面尺寸修正（安卓竖屏常见问题：只剩一条细条 / 黑屏）----
