@@ -8,41 +8,40 @@
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <style>
   html,body{margin:0;height:100%;width:100%;background:#000;overflow:hidden;font-family:system-ui,sans-serif;
-            color:#fff;position:fixed;inset:0;overscroll-behavior:none}
-  /* 关键技术点：强制相机画面铺满全屏（cover 裁切），
-     不依赖 MindAR 内部算出来的 px 尺寸，避免安卓竖屏只剩一条细条 */
+            color:#fff;position:fixed;inset:0;overscroll-behavior:none;font-size:17px}
+  /* 相机画面强制铺满全屏（安卓竖屏常见「只剩一条细条」就是这里） */
   video{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;
         object-fit:cover!important;object-position:center!important;z-index:-2!important;background:#000}
   a-scene{position:fixed!important;inset:0;width:100%!important;height:100%!important;display:block}
   .a-canvas{width:100%!important;height:100%!important;display:block}
+
   #hud{position:fixed;left:0;right:0;top:0;padding:12px;display:flex;justify-content:space-between;
        align-items:center;z-index:6;pointer-events:none;gap:8px}
   #hud > *{pointer-events:auto}
-  .pill{color:#fff;text-decoration:none;background:rgba(0,0,0,.5);padding:9px 14px;border-radius:999px;
-        font-size:14px;border:0;font-family:inherit;cursor:pointer}
+  .pill{color:#fff;text-decoration:none;background:rgba(0,0,0,.55);padding:11px 16px;border-radius:999px;
+        font-size:1rem;font-weight:600;border:0;font-family:inherit;cursor:pointer}
   #langbar{display:flex;gap:6px}
-  #langbar button{opacity:.55}
-  #langbar button.on{opacity:1;background:#5fd4e6;color:#08222c;font-weight:700}
-  #tip{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);max-width:92vw;text-align:center;
-       background:rgba(0,0,0,.62);padding:10px 20px;border-radius:999px;font-size:14px;z-index:6;
+  #langbar button{opacity:.6;min-width:52px;text-align:center}
+  #langbar button.on{opacity:1;background:#5fd4e6;color:#08222c;font-weight:800}
+
+  #tip{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);max-width:94vw;text-align:center;
+       background:rgba(0,0,0,.68);padding:13px 22px;border-radius:999px;font-size:1.02rem;z-index:6;
        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;
-       background:#0f1b2d;z-index:9;text-align:center;line-height:1.7;font-size:15px}
-  #dbg{position:fixed;left:8px;bottom:64px;z-index:7;font:11px/1.5 ui-monospace,monospace;
+       background:#0f1b2d;z-index:9;text-align:center;line-height:1.7;font-size:1.05rem}
+  #err h3{font-size:1.3rem;margin-bottom:12px}
+  #dbg{position:fixed;left:8px;bottom:72px;z-index:7;font:12px/1.5 ui-monospace,monospace;
        background:rgba(0,0,0,.65);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
 </style>
 </head>
 <body>
   <div id="hud">
-    <a class="pill" href="index.html">‹ Home</a>
-    <div id="langbar">
-      <button class="pill" data-lang="en">EN</button>
-      <button class="pill" data-lang="bm">BM</button>
-    </div>
+    <a class="pill" id="homeBtn" href="index.html">‹ Home</a>
+    <div id="langbar"></div>
     <button class="pill" id="soundBtn">🔊</button>
   </div>
 
-  <div id="tip">🔍 Point your camera at a book page</div>
+  <div id="tip"></div>
   <div id="dbg"></div>
   <div id="err"></div>
 
@@ -75,6 +74,7 @@
     const params = new URLSearchParams(location.search);
     let lang = params.get("lang") || localStorage.getItem("lang") || "en";
     if (!CONFIG.languages.some(l => l.code === lang)) lang = CONFIG.languages[0].code;
+    const T = CONFIG.ui[lang] || CONFIG.ui.en;
 
     const audio  = document.getElementById("narration");
     const tip    = document.getElementById("tip");
@@ -82,22 +82,32 @@
     const loaded = {};
     let muted = false, activePage = null;
 
-    // ---- 语言按钮 ----
-    const langBtns = document.querySelectorAll("#langbar button");
-    langBtns.forEach(b => {
-      b.classList.toggle("on", b.dataset.lang === lang);
+    const fill = (s, n) => s.replace("{n}", n);
+
+    // ---- 顶栏 / 语言按钮 ----
+    document.getElementById("homeBtn").textContent = "‹ " + T.home;
+    const langbar = document.getElementById("langbar");
+    CONFIG.languages.forEach(L => {
+      const b = document.createElement("button");
+      b.className = "pill" + (L.code === lang ? " on" : "");
+      b.textContent = L.label;
+      b.title = L.native;
       b.onclick = () => {
-        lang = b.dataset.lang;
+        lang = L.code;
         localStorage.setItem("lang", lang);
-        langBtns.forEach(x => x.classList.toggle("on", x.dataset.lang === lang));
-        if (activePage) playNarration(activePage);
+        location.href = "ar.html?lang=" + lang;
       };
+      langbar.appendChild(b);
     });
+
+    function setTipIdle(){ tip.textContent = "🔍 " + T.tipIdle; }
+    setTipIdle();
 
     function playNarration(pageNo) {
       const p = CONFIG.pages[pageNo - 1];
-      if (!p || !p.audio[lang]) return;
-      audio.src = p.audio[lang];
+      const src = p && p.audio[lang];
+      if (!src) return;
+      audio.src = src;
       audio.currentTime = 0;
       audio.play().catch(() => {});
     }
@@ -110,23 +120,18 @@
       m.setAttribute("src", p.model);
       m.setAttribute("position", "0 0.1 0");
       m.setAttribute("scale", "0.21 0.21 0.21");
-      m.addEventListener("model-error", () => {
-        tip.textContent = "⚠️ Page " + pageNo + " 的 3D 模型还没放";
-      });
-      m.addEventListener("model-loaded", () => {
-        tip.textContent = "✅ Page " + pageNo + " / " + CONFIG.pages.length;
-        startAnim(m);
-      });
+      m.addEventListener("model-error", () => { tip.textContent = "⚠️ " + fill(T.tipMissing, pageNo); });
+      m.addEventListener("model-loaded", () => { tip.textContent = "✅ " + fill(T.tipReady, pageNo); startAnim(m); });
       anchor.appendChild(m);
     }
 
-    // ---- 模型自带动画（走路 / 跑步内建 clip）----
+    // ---- 模型自带动画 ----
     const sceneEl = document.querySelector("a-scene");
     const mixers = [];
     const clipIndex = (CONFIG.animClip === undefined) ? 0 : CONFIG.animClip;
 
     function startAnim(entity) {
-      if (clipIndex < 0) return;   // -1 = 不播动画（停在该模型的预设姿势）
+      if (clipIndex < 0) return;
       const obj = entity.getObject3D("mesh");
       if (!obj || !obj.animations || !obj.animations.length) return;
       const mixer = new THREE.AnimationMixer(obj);
@@ -144,11 +149,11 @@
       if (activePage === pageNo) return;
       activePage = pageNo;
       if (!loaded[pageNo]) {
-        tip.textContent = "⏳ 正在载入 Page " + pageNo + " 的 3D 模型…";
+        tip.textContent = "⏳ " + fill(T.tipLoading, pageNo);
         buildModel(anchorIndex, pageNo);
         loaded[pageNo] = true;
       } else {
-        tip.textContent = "✅ Page " + pageNo + " / " + CONFIG.pages.length;
+        tip.textContent = "✅ " + fill(T.tipReady, pageNo);
       }
       playNarration(pageNo);
     }
@@ -157,12 +162,11 @@
       const pageNo = CONFIG.targetMap[anchorIndex];
       if (!pageNo || activePage !== pageNo) return;
       activePage = null;
-      tip.textContent = "🔍 Point your camera at a book page";
+      setTipIdle();
       audio.pause();
       audio.currentTime = 0;
     }
 
-    // MindAR 的 targetFound / targetLost 事件是发在锚点上的
     for (let i = 0; i < 12; i++) {
       const el = document.getElementById("anchor" + i);
       if (!el) continue;
@@ -170,7 +174,7 @@
       el.addEventListener("targetLost",  () => onLost(i));
     }
 
-    // ---- 调试面板（网址加 ?debug=1 打开）----
+    // ---- 调试面板（网址加 ?debug=1）----
     const dbgEl = document.getElementById("dbg");
     if (params.get("debug") === "1") {
       dbgEl.style.display = "block";
@@ -186,7 +190,7 @@
       }, 700);
     }
 
-    // ---- 相机画面尺寸修正（安卓竖屏常见问题：只剩一条细条 / 黑屏）----
+    // ---- 相机画面尺寸修正 ----
     function refit(){
       const sys = sceneEl.systems["mindar-image-system"];
       if (!sys || !sys.video || !sys.video.videoWidth) return;
@@ -200,10 +204,9 @@
     window.addEventListener("resize", () => setTimeout(refit, 200));
 
     // 相机打不开 → 提示
-    document.querySelector("a-scene").addEventListener("arError", () => {
+    sceneEl.addEventListener("arError", () => {
       errBox.style.display = "flex";
-      errBox.innerHTML = "📷 相机打不开<br><br>请允许相机权限，并且一定要用 <b>https://</b> 网址打开。<br>"
-                       + "（用 http 或局域网 IP 打开时，浏览器会拒绝相机）";
+      errBox.innerHTML = "<div><h3>" + T.errTitle + "</h3>" + T.errBody + "</div>";
     });
 
     document.getElementById("soundBtn").onclick = () => {
@@ -212,7 +215,6 @@
       document.getElementById("soundBtn").textContent = muted ? "🔇" : "🔊";
     };
 
-    // 手机需要一次点击才允许播放声音
     window.addEventListener("touchstart", function unlock(){
       audio.play().then(() => audio.pause()).catch(() => {});
     }, { once: true });

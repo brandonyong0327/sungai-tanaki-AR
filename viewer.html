@@ -3,42 +3,46 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sungai Tanaki · 3D Preview</title>
+<title>Sungai Tanaki · 3D</title>
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <style>
-  html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:#fff}
+  html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:#fff;font-size:17px}
   #bg{position:fixed;inset:0;background:radial-gradient(circle at 50% 26%,#26456e,#0f1b2d 70%);z-index:-1}
   #hud{position:fixed;left:0;right:0;top:0;padding:14px;display:flex;justify-content:space-between;
-       align-items:center;z-index:5}
-  .pill{color:#fff;background:rgba(0,0,0,.45);padding:9px 15px;border-radius:999px;font-size:14px;
-        text-decoration:none;border:0;font-family:inherit;cursor:pointer}
-  #info{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:5;text-align:center;
+       align-items:center;z-index:5;gap:8px}
+  .pill{color:#fff;background:rgba(0,0,0,.5);padding:11px 16px;border-radius:999px;font-size:1rem;
+        font-weight:600;text-decoration:none;border:0;font-family:inherit;cursor:pointer}
+  #langbar{display:flex;gap:6px}
+  #langbar button{opacity:.6;min-width:52px;padding:9px 12px}
+  #langbar button.on{opacity:1;background:#5fd4e6;color:#08222c;font-weight:800}
+  #info{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:5;text-align:center;
         width:100%;padding:0 16px}
-  #title{font-size:20px;font-weight:700;margin-bottom:4px}
-  #sub{font-size:13px;color:#9db4d4}
+  #title{font-size:1.4rem;font-weight:800;margin-bottom:4px}
+  #sub{font-size:.95rem;color:#a9c2e2}
   #nav{display:flex;gap:10px;justify-content:center;margin-top:12px}
-  #nav button{background:rgba(0,0,0,.45);color:#fff;border:0;padding:9px 20px;border-radius:999px;
-              font-size:14px;font-family:inherit;cursor:pointer}
+  #nav button{background:rgba(0,0,0,.5);color:#fff;border:0;padding:12px 22px;border-radius:999px;
+              font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer}
   #nav button:disabled{opacity:.3}
   #note{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;
-        font-size:15px;line-height:1.8;color:#9db4d4;display:none;z-index:5;padding:0 24px}
+        font-size:1.05rem;line-height:1.8;color:#a9c2e2;display:none;z-index:5;padding:0 24px}
 </style>
 </head>
 <body>
   <div id="bg"></div>
   <div id="hud">
-    <a class="pill" href="index.html">‹ Home</a>
+    <a class="pill" id="homeBtn" href="index.html">‹ Home</a>
+    <div id="langbar"></div>
     <button class="pill" id="soundBtn">🔊</button>
   </div>
 
-  <div id="note">3D 模型还没放 🚧</div>
+  <div id="note"></div>
 
   <div id="info">
     <div id="title">Page</div>
-    <div id="sub">drag to orbit · pinch to zoom</div>
+    <div id="sub"></div>
     <div id="nav">
-      <button id="prev">‹ Prev</button>
-      <button id="next">Next ›</button>
+      <button id="prev">‹</button>
+      <button id="next">›</button>
     </div>
   </div>
 
@@ -62,6 +66,7 @@
     if (!(page >= 1 && page <= total)) page = 1;
     let lang = params.get("lang") || localStorage.getItem("lang") || "en";
     if (!CONFIG.languages.some(l => l.code === lang)) lang = CONFIG.languages[0].code;
+    const T = CONFIG.ui[lang] || CONFIG.ui.en;
 
     const audio   = document.getElementById("narration");
     const modelEl = document.getElementById("model");
@@ -71,19 +76,31 @@
     const next    = document.getElementById("next");
     let muted = false;
 
-    // ---- 模型自带动画播放 ----
+    document.getElementById("homeBtn").textContent = "‹ " + T.home;
+    document.getElementById("sub").textContent = T.viewerHint;
+    prev.textContent = T.prev;
+    next.textContent = T.next;
+
+    const langbar = document.getElementById("langbar");
+    CONFIG.languages.forEach(L => {
+      const b = document.createElement("button");
+      b.className = "pill" + (L.code === lang ? " on" : "");
+      b.textContent = L.label;
+      b.onclick = () => { localStorage.setItem("lang", L.code); location.href = "viewer.html?page=" + page + "&lang=" + L.code; };
+      langbar.appendChild(b);
+    });
+
     let mixer = null;
     const sceneEl = document.querySelector("a-scene");
     const clipIndex = (CONFIG.animClip === undefined) ? 0 : CONFIG.animClip;
 
     function startAnim() {
-      if (clipIndex < 0) return;   // -1 = 不播动画（停在该模型的预设姿势）
+      if (clipIndex < 0) return;
       const obj = modelEl.getObject3D("mesh");
       if (!obj || !obj.animations || !obj.animations.length) return;
       if (mixer) { mixer.stopAllAction(); mixer.uncacheRoot(mixer.getRoot()); mixer = null; }
       mixer = new THREE.AnimationMixer(obj);
-      const clip = obj.animations[Math.min(clipIndex, obj.animations.length - 1)];
-      mixer.clipAction(clip).play();
+      mixer.clipAction(obj.animations[Math.min(clipIndex, obj.animations.length - 1)]).play();
     }
     sceneEl.addEventListener("tick", (e) => {
       if (mixer) mixer.update((e.detail.timeDelta || 16) / 1000);
@@ -91,12 +108,11 @@
 
     modelEl.addEventListener("model-error", () => {
       noteEl.style.display = "block";
-      noteEl.innerHTML = "3D 模型载入失败 😢<br><span style='font-size:13px'>按一下重试</span><br>"
-                       + "<button id='retry' style='margin-top:12px;padding:9px 20px;border-radius:999px;"
-                       + "border:0;background:#5fd4e6;color:#08222c;font-weight:700'>retry</button>";
+      noteEl.innerHTML = T.loadFail + "<br><button id='retry' class='pill' style='margin-top:12px'>" +
+                         T.retry + "</button>";
       modelEl.setAttribute("visible", "false");
       const r = document.getElementById("retry");
-      if (r) r.onclick = () => { noteEl.style.display = "none"; modelEl.setAttribute("src", ""); setTimeout(render, 50); };
+      if (r) r.onclick = () => { noteEl.style.display = "none"; modelEl.setAttribute("src", ""); setTimeout(render, 60); };
     });
     modelEl.addEventListener("model-loaded", () => {
       noteEl.style.display = "none";
@@ -105,7 +121,7 @@
       startAnim();
     });
 
-    // ---- 竖屏/横屏都自动把模型框进画面 ----
+    // 竖屏 / 横屏都自动把模型框进画面
     function fitCamera(){
       const obj = modelEl.getObject3D("mesh");
       const camEl = document.querySelector("a-camera");
@@ -114,12 +130,10 @@
       sceneEl.object3D.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(obj);
       if (box.isEmpty()) return;
-      const size = box.getSize(new THREE.Vector3());
       const ctr  = box.getCenter(new THREE.Vector3());
       const vfov = cam3.fov * Math.PI / 180;
       const hfov = 2 * Math.atan(Math.tan(vfov / 2) * cam3.aspect);
       const th = Math.tan(hfov / 2), tv = Math.tan(vfov / 2);
-      // 逐个包围盒角点算所需距离 → 横竖屏都能刚好框住模型
       let dist = 0;
       [box.min.x, box.max.x].forEach(x => {
         [box.min.y, box.max.y].forEach(y => {
@@ -137,17 +151,16 @@
     let slowTimer = null;
     function render() {
       const p = CONFIG.pages[page - 1];
-      titleEl.textContent = "Page " + page + " / " + total;
+      titleEl.textContent = T.pageWord + " " + page + " / " + total;
       noteEl.style.display = "block";
-      noteEl.innerHTML = "正在载入 3D 模型…";
+      noteEl.innerHTML = T.loading;
       modelEl.setAttribute("visible", "true");
       modelEl.setAttribute("src", p.model);
 
       if (slowTimer) clearTimeout(slowTimer);
       slowTimer = setTimeout(() => {
         if (noteEl.style.display !== "none") {
-          noteEl.innerHTML = "正在载入 3D 模型…<br><span style='font-size:12px;color:#7f95b5'>"
-                           + "模型约 11.6 MB，网速慢时要等一下</span>";
+          noteEl.innerHTML = T.loading + "<br><span style='font-size:.85rem;color:#7f95b5'>" + T.loadingSlow + "</span>";
         }
       }, 6000);
 
