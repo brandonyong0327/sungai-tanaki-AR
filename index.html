@@ -117,8 +117,6 @@
         font-size:1.15rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
   .pg-btn.prev{left:6px}.pg-btn.next{right:6px}
   .pg-btn:disabled{opacity:.28;cursor:default}
-  .pg-ind{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:3;font-size:.68rem;
-        color:var(--cream);background:rgba(0,0,0,.5);padding:3px 10px;border-radius:999px;letter-spacing:.05em}
   @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 
   .stats{display:flex;gap:34px;justify-content:center;margin-top:34px;flex-wrap:wrap;color:var(--muted);font-size:.95rem}
@@ -256,7 +254,6 @@
         <div class="page-layer" id="pageLeaf"><img id="leafImg" alt="Sungai Tanaki page"/></div>
         <button class="pg-btn prev" id="pgPrev" aria-label="Previous page">‹</button>
         <button class="pg-btn next" id="pgNext" aria-label="Next page">›</button>
-        <div class="pg-ind" id="pgInd">1 / 13</div>
       </div>
     </div>
   </div>
@@ -403,12 +400,10 @@
   const leafImg = document.getElementById("leafImg");
   const pgPrev = document.getElementById("pgPrev");
   const pgNext = document.getElementById("pgNext");
-  const pgInd = document.getElementById("pgInd");
 
   function paint() {
     backImg.src = bookPages[pg];
     leafImg.src = bookPages[pg];
-    pgInd.textContent = (pg + 1) + " / " + bookPages.length;
     pgPrev.disabled = pg === 0;
     pgNext.disabled = pg === bookPages.length - 1;
   }
@@ -455,7 +450,7 @@
   }
   function resetIdle() {
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(goCover, 4000);
+    idleTimer = setTimeout(goCover, 3000);
   }
   ["click", "touchstart", "pointerdown", "mousemove", "keydown"].forEach(ev =>
     cover.addEventListener(ev, resetIdle, { passive: true }));
