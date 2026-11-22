@@ -199,7 +199,7 @@
     html{font-size:18px}
     .nav-links{display:none}
     .hero{grid-template-columns:1fr;gap:22px;text-align:center}
-    .book{order:-1;width:min(240px,70vw);transform:perspective(1000px) rotateY(0) rotateX(0) rotateZ(0)}
+    .book{order:-1;width:min(240px,70vw)}
     .badge{margin:0 auto 16px}
     .sub{margin:0 auto}
     .actions{justify-content:center;flex-direction:column;align-items:stretch}
@@ -207,10 +207,6 @@
     .steps{grid-template-columns:1fr}
     .about-grid{grid-template-columns:1fr;gap:22px}
     .grid{gap:8px}
-  }
-  /* 触摸设备：书本保持正面朝向，不做倾角跟随 */
-  @media (pointer:coarse){
-    .book{transform:perspective(1000px) rotateY(0) rotateX(0) rotateZ(0)}
   }
 </style>
 </head>
@@ -397,10 +393,10 @@
   const bookPages = ["assets/pages/cover.jpg", ...CONFIG.pages.map(p => p.thumb)];
   let pg = 0, animating = false;
   const cover = document.getElementById("coverCard");
-  // 触摸设备（手机/平板）：书本保持正面，不做倾角跟随
-  if (matchMedia("(pointer:coarse)").matches || "ontouchstart" in window) {
-    cover.classList.add("front-facing");
-  }
+  const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
+  // 触摸设备：点按/触摸时才转正；闲置后回到斜放
+  function faceFront(){ if (isTouch) cover.classList.add("front-facing"); }
+  function faceBack(){ cover.classList.remove("front-facing"); cover.style.transform = ""; }
   const pageBack = document.getElementById("pageBack");
   const pageLeaf = document.getElementById("pageLeaf");
   const backImg = document.getElementById("backImg");
@@ -450,13 +446,12 @@
   });
   paint();
 
-  // 闲置 8 秒：自动回到封面，并恢复默认摆放角度
+  // 闲置 4 秒：自动回到封面，并恢复斜放角度
   let idleTimer = null;
-  function restoreAngle() { cover.style.transform = ""; }
   function goCover() {
     if (animating) { resetIdle(); return; }
     if (pg !== 0) { pg = 0; paint(); }
-    restoreAngle();
+    faceBack();
   }
   function resetIdle() {
     clearTimeout(idleTimer);
@@ -464,6 +459,9 @@
   }
   ["click", "touchstart", "pointerdown", "mousemove", "keydown"].forEach(ev =>
     cover.addEventListener(ev, resetIdle, { passive: true }));
+  // 触摸/点按书本时转正朝向
+  ["pointerdown", "touchstart", "click"].forEach(ev =>
+    cover.addEventListener(ev, faceFront, { passive: true }));
   resetIdle();
 
   // 封面卡 3D 倾斜（仅鼠标设备；翻页过程中保持当前角度）
@@ -476,7 +474,7 @@
       cover.style.transform =
         `perspective(900px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg) translateY(-4px)`;
     });
-    cover.addEventListener("mouseleave", restoreAngle);
+    cover.addEventListener("mouseleave", faceBack);
   }
 
   // 滚动显现
