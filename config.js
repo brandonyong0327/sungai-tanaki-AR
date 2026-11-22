@@ -13,9 +13,9 @@ const CONFIG = {
   //  语言（code = assets/audio 下的文件夹名）
   // -----------------------------------------------------------
   languages: [
-    { code: "en",  label: "EN",  name: "English",       native: "English",       desc: "Full narration in English." },
-    { code: "bm",  label: "BM",  name: "Bahasa Melayu", native: "Bahasa Melayu", desc: "Full narration in Malay." },
-    { code: "dsn", label: "DSN", name: "Kadazandusun",  native: "Kadazandusun",  desc: "Narration in Dusun, one of Sabah's mother tongues." },
+    { code: "en",  label: "EN",  name: "English",       native: "English",       desc: "Narration in English." },
+    { code: "bm",  label: "BM",  name: "Bahasa Melayu", native: "Bahasa Melayu", desc: "Narration in Malay." },
+    { code: "dsn", label: "DSN", name: "Kadazandusun",  native: "Kadazandusun",  desc: "Narration in Kadazandusun." },
   ],
 
   // -----------------------------------------------------------
