@@ -8,7 +8,9 @@
 <style>
   :root{--gold:#e9b548;--gold2:#f6cf76;--orange:#ee9a35;--orange2:#e5842a;--cream:#f4ecdc;--muted:#a9c0a4;}
   html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:var(--cream);font-size:18px}
-  #bg{position:fixed;inset:0;background:radial-gradient(circle at 50% 26%,#1c3a28,#0e2318 70%);z-index:-1}
+  #bg{position:fixed;inset:0;background:radial-gradient(circle at 50% 26%,rgba(28,58,40,.9),rgba(14,35,24,.95) 70%);z-index:-1}
+  #bg-art{position:fixed;inset:-12%;z-index:-2;background:url('assets/pages/cover.jpg') center/cover no-repeat;
+          filter:blur(30px) saturate(1.15);opacity:.22;transform:scale(1.12)}
   #hud{position:fixed;left:0;right:0;top:0;padding:14px;display:flex;justify-content:space-between;
        align-items:center;z-index:5;gap:8px}
   .pill{color:var(--cream);background:rgba(14,35,24,.72);padding:11px 16px;border-radius:999px;font-size:1rem;
@@ -30,6 +32,7 @@
 </style>
 </head>
 <body>
+  <div id="bg-art"></div>
   <div id="bg"></div>
   <div id="hud">
     <a class="pill" id="homeBtn" href="index.html">‹ Home</a>
