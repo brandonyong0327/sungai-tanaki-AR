@@ -75,19 +75,20 @@
         justify-content:space-between;gap:8px;padding:12px 14px;pointer-events:none}
   .topbar>*{pointer-events:auto}
   .topbar .right{display:flex;gap:8px;align-items:center}
-  .page-badge{padding:10px 18px;border-radius:999px;font-weight:700;font-size:.95rem;
+  .page-badge{padding:10px 18px;border-radius:999px;font-weight:700;font-size:1.05rem;
         background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px)}
   .lang-select{background:var(--glass);color:var(--cream);border:1px solid var(--glass-line);
         border-radius:999px;padding:10px 12px;font-family:inherit;font-weight:700}
 
   .hint{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);z-index:15;
         max-width:calc(100vw - 32px);width:max-content;padding:12px 18px;border-radius:14px;
-        text-align:center;font-weight:600;font-size:15px;transition:opacity .3s;
+        text-align:center;font-weight:600;font-size:17px;line-height:1.5;transition:opacity .3s;
         background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px)}
 
   .loading-pill{position:fixed;left:50%;bottom:180px;transform:translateX(-50%);z-index:16;
         display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:14px;
-        background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px);font-weight:600}
+        background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px);
+        font-weight:600;font-size:17px;line-height:1.5}
   .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--gold);
         border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -104,7 +105,7 @@
 
   .controls{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;
         align-items:center;gap:16px;padding:14px 14px 20px;transition:opacity .25s,transform .25s}
-  .ctl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.75rem;color:var(--muted)}
+  .ctl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.85rem;color:var(--muted)}
   .icon-btn.big{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--orange2));
         color:#2a1a05;border:0}
   .off{opacity:0;pointer-events:none}
@@ -132,9 +133,9 @@
   <div class="page-badge off" id="pageBadge" aria-live="polite"></div>
   <div class="right">
     <select class="lang-select" id="langSelect" aria-label="language"></select>
-    <button class="icon-btn" id="muteBtn" aria-pressed="false">
-      <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M19 5a10 10 0 010 14"/></svg>
-      <svg class="off" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+    <button class="icon-btn" id="muteBtn" aria-pressed="false" aria-label="toggle sound">
+      <svg id="muteOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M19 5a10 10 0 010 14"/></svg>
+      <svg id="muteOff" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
     </button>
   </div>
 </header>
@@ -149,7 +150,7 @@
   <div class="ctl">
     <button class="icon-btn big" id="playBtn" aria-label="pause">
       <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-      <svg class="i-play" hidden viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 001.5.86l10.4-6.5a1 1 0 000-1.72L9.5 4.64A1 1 0 008 5.5z"/></svg>
+      <svg class="i-play" style="display:none" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 001.5.86l10.4-6.5a1 1 0 000-1.72L9.5 4.64A1 1 0 008 5.5z"/></svg>
     </button><span id="playLabel"></span>
   </div>
   <div class="ctl">
@@ -278,8 +279,8 @@
   }
   function updatePlayUI() {
     const playing = !audio.paused && !audio.ended;
-    document.querySelector(".i-pause").hidden = !playing;
-    document.querySelector(".i-play").hidden = playing;
+    document.querySelector(".i-pause").style.display = playing ? "" : "none";
+    document.querySelector(".i-play").style.display = playing ? "none" : "";
     $("playLabel").textContent = playing ? T.pause : T.play;
   }
 
@@ -429,8 +430,8 @@
   $("muteBtn").onclick = () => {
     muted = !muted; audio.muted = muted;
     $("muteBtn").setAttribute("aria-pressed", muted);
-    document.querySelector(".on").hidden = muted;
-    document.querySelector(".off").hidden = !muted;
+    $("muteOn").style.display = muted ? "none" : "";
+    $("muteOff").style.display = muted ? "" : "none";
   };
   $("retryBtn").onclick = startAR;
   $("startBtn").onclick = startAR;
