@@ -1,225 +1,459 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0e2318" />
 <title>Sungai Tanaki · AR</title>
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <style>
-  :root{--gold:#e9b548;--orange:#ee9a35;--orange2:#e5842a;--cream:#f4ecdc;--muted:#a9c0a4;}
-  html,body{margin:0;height:100%;width:100%;background:#000;overflow:hidden;font-family:system-ui,sans-serif;
-            color:#fff;position:fixed;inset:0;overscroll-behavior:none;font-size:18px}
-  /* 相机画面强制铺满全屏（安卓竖屏常见「只剩一条细条」就是这里） */
+  :root{
+    --bg:#0e2318; --card:#1c3a28; --line:#33593d; --gold:#e9b548; --gold2:#f6cf76;
+    --cream:#f4ecdc; --muted:#a9c0a4; --orange:#ee9a35; --orange2:#e5842a;
+    --glass:rgba(14,35,24,.72); --glass-line:rgba(233,181,72,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;width:100%;overflow:hidden;font-family:system-ui,sans-serif;color:var(--cream);
+            position:fixed;inset:0;overscroll-behavior:none;font-size:18px}
+
+  /* 相机画面强制铺满全屏 */
+  #stage{position:fixed;inset:0;z-index:1}
   video{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;
         object-fit:cover!important;object-position:center!important;z-index:-2!important;background:#000}
   a-scene{position:fixed!important;inset:0;width:100%!important;height:100%!important;display:block}
   .a-canvas{width:100%!important;height:100%!important;display:block}
 
-  #hud{position:fixed;left:0;right:0;top:0;padding:12px;display:flex;justify-content:space-between;
-       align-items:center;z-index:6;pointer-events:none;gap:8px}
-  #hud > *{pointer-events:auto}
-  .pill{color:var(--cream);text-decoration:none;background:rgba(14,35,24,.72);padding:11px 16px;border-radius:999px;
-        font-size:1rem;font-weight:600;border:1px solid rgba(233,181,72,.3);font-family:inherit;cursor:pointer;
-        backdrop-filter:blur(6px)}
-  #langbar{display:flex;gap:6px}
-  #langbar button{opacity:.65;min-width:56px;text-align:center}
-  #langbar button.on{opacity:1;background:linear-gradient(135deg,var(--gold),var(--orange2));color:#2a1a05;font-weight:800;border-color:transparent}
+  .icon-btn{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:50%;
+        border:1px solid var(--glass-line);background:var(--glass);backdrop-filter:blur(14px);
+        color:var(--cream);text-decoration:none;cursor:pointer;font-family:inherit}
+  .icon-btn svg{width:22px;height:22px}
 
-  #tip{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);max-width:94vw;text-align:center;
-       background:rgba(14,35,24,.78);padding:13px 22px;border-radius:999px;font-size:1.05rem;z-index:6;
-       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid rgba(233,181,72,.25)}
-  #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;
-       background:#0e2318;z-index:9;text-align:center;line-height:1.7;font-size:1.1rem;color:var(--cream)}
-  #err h3{font-size:1.35rem;margin-bottom:12px;color:var(--gold2)}
+  /* ---------- 引导 / 启动 / 错误 面板 ---------- */
+  .sheet{position:fixed;inset:0;z-index:40;overflow-y:auto;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;padding:26px 22px;text-align:center;
+        background:radial-gradient(120% 70% at 50% 0%,#1c3a28,#0e2318 55%,#08180f)}
+  .sheet[hidden]{display:none}
+  .back-link{position:absolute;top:16px;left:16px}
+  .cover{width:min(46vw,190px);aspect-ratio:3/4;border-radius:14px;object-fit:cover;
+        box-shadow:0 24px 50px rgba(0,0,0,.45),-6px 0 0 rgba(0,0,0,.18) inset;
+        transform:rotate(-3deg);margin-bottom:22px}
+  .sheet h1{font-family:Georgia,serif;font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin-bottom:8px}
+  .sub{color:var(--muted);margin-bottom:22px;max-width:340px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:22px}
+  .chips .legend{width:100%;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+  .chip{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--glass-line);
+        background:transparent;color:var(--cream);font-weight:700;font-family:inherit;cursor:pointer}
+  .chip.active{background:var(--cream);color:#2a1a05;border-color:var(--cream)}
+
+  .stack{display:flex;flex-direction:column;gap:12px;width:min(100%,340px)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;
+        padding:0 26px;border-radius:999px;border:0;font-weight:700;font-size:17px;font-family:inherit;
+        cursor:pointer;text-decoration:none}
+  .btn svg{width:22px;height:22px;flex:none}
+  .btn-primary{background:linear-gradient(135deg,var(--gold),var(--orange2));color:#2a1a05;
+        box-shadow:0 12px 28px rgba(229,132,42,.32)}
+  .btn-secondary{background:transparent;border:1px solid var(--glass-line);color:var(--cream)}
+
+  .tips{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:8px;text-align:left;
+        font-size:.92rem;color:#d6e8e6;width:min(100%,340px)}
+  .tips li{display:flex;gap:10px;align-items:flex-start}
+  .tips li::before{content:'';flex:none;width:8px;height:8px;margin-top:7px;border-radius:50%;background:var(--gold)}
+
+  .boot-progress{width:min(70vw,260px);margin-top:18px}
+  .boot-progress .bar{width:100%;height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+  .boot-progress .bar span{display:block;height:100%;width:0;background:var(--gold);border-radius:999px;transition:width .3s}
+  .boot-progress small{display:block;margin-top:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .err-icon{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin-bottom:16px;
+        background:rgba(229,132,42,.15);border:1px solid var(--glass-line)}
+  .err-icon svg{width:30px;height:30px;color:var(--gold2)}
+  .msg{color:var(--muted);max-width:340px;line-height:1.7;margin:10px 0 22px}
+
+  /* ---------- 相机模式 UI ---------- */
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;
+        justify-content:space-between;gap:8px;padding:12px 14px;pointer-events:none}
+  .topbar>*{pointer-events:auto}
+  .topbar .right{display:flex;gap:8px;align-items:center}
+  .page-badge{padding:10px 18px;border-radius:999px;font-weight:700;font-size:.95rem;
+        background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px)}
+  .lang-select{background:var(--glass);color:var(--cream);border:1px solid var(--glass-line);
+        border-radius:999px;padding:10px 12px;font-family:inherit;font-weight:700}
+
+  .hint{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);z-index:15;
+        max-width:calc(100vw - 32px);width:max-content;padding:12px 18px;border-radius:14px;
+        text-align:center;font-weight:600;font-size:15px;transition:opacity .3s;
+        background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px)}
+
+  .loading-pill{position:fixed;left:50%;bottom:180px;transform:translateX(-50%);z-index:16;
+        display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:14px;
+        background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(14px);font-weight:600}
+  .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--gold);
+        border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .viewfinder{position:fixed;inset:0;z-index:5;pointer-events:none;display:grid;place-items:center}
+  .frame{position:relative;width:min(72vw,52vh);aspect-ratio:3/4}
+  .frame i{position:absolute;width:38px;height:38px;border:4px solid #fff;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
+  .frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:12px}
+  .frame i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0;border-top-right-radius:12px}
+  .frame i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0;border-bottom-left-radius:12px}
+  .frame i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0;border-bottom-right-radius:12px}
+  .scanline{position:absolute;left:6px;right:6px;height:2px;background:var(--gold);animation:scan 2.4s ease-in-out infinite}
+  @keyframes scan{0%,100%{top:6%}50%{top:94%}}
+
+  .controls{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:center;
+        align-items:center;gap:16px;padding:14px 14px 20px;transition:opacity .25s,transform .25s}
+  .ctl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.75rem;color:var(--muted)}
+  .icon-btn.big{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--orange2));
+        color:#2a1a05;border:0}
+  .off{opacity:0;pointer-events:none}
+
   #dbg{position:fixed;left:8px;bottom:72px;z-index:7;font:12px/1.5 ui-monospace,monospace;
        background:rgba(0,0,0,.65);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
 </style>
 </head>
 <body>
-  <div id="hud">
-    <a class="pill" id="homeBtn" href="index.html">‹ Home</a>
-    <div id="langbar"></div>
-    <button class="pill" id="soundBtn">🔊</button>
+
+<div id="stage"></div>
+
+<!-- 取景框 -->
+<div class="viewfinder" id="viewfinder" hidden>
+  <div class="frame"><i></i><i></i><i></i><i></i><div class="scanline"></div></div>
+</div>
+<div class="hint off" id="hint" role="status" aria-live="polite"></div>
+<div class="loading-pill" id="modelLoading" hidden><div class="spinner"></div><span id="modelLabel"></span></div>
+
+<!-- 相机顶栏 -->
+<header class="topbar" id="topbar" hidden>
+  <a class="icon-btn" id="homeBtn" href="index.html" aria-label="back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </a>
+  <div class="page-badge off" id="pageBadge" aria-live="polite"></div>
+  <div class="right">
+    <select class="lang-select" id="langSelect" aria-label="language"></select>
+    <button class="icon-btn" id="muteBtn" aria-pressed="false">
+      <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M19 5a10 10 0 010 14"/></svg>
+      <svg class="off" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+    </button>
   </div>
+</header>
 
-  <div id="tip"></div>
-  <div id="dbg"></div>
-  <div id="err"></div>
+<!-- 底部控制（识别到书页时） -->
+<footer class="controls off" id="controls">
+  <div class="ctl">
+    <button class="icon-btn" id="replayBtn" aria-label="replay">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.8L3 8"/><path d="M3 3v5h5"/></svg>
+    </button><span id="replayLabel"></span>
+  </div>
+  <div class="ctl">
+    <button class="icon-btn big" id="playBtn" aria-label="pause">
+      <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      <svg class="i-play" hidden viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 001.5.86l10.4-6.5a1 1 0 000-1.72L9.5 4.64A1 1 0 008 5.5z"/></svg>
+    </button><span id="playLabel"></span>
+  </div>
+  <div class="ctl">
+    <button class="icon-btn" id="resetBtn" aria-label="reset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="5"/></svg>
+    </button><span id="resetLabel"></span>
+  </div>
+</footer>
 
-  <a-scene mindar-image="imageTargetSrc: ./assets/targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;"
-           embedded vr-mode-ui="enabled: false"
-           device-orientation-permission-ui="enabled: false"
-           renderer="colorManagement: true; antialias: true; physicallyCorrectLights: true">
-    <a-light type="ambient" intensity="1.15"></a-light>
-    <a-light type="directional" position="0 2 1" intensity="1.5"></a-light>
-    <a-camera></a-camera>
+<!-- 引导页 -->
+<section class="sheet" id="startSheet">
+  <a class="icon-btn back-link" href="index.html" aria-label="back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </a>
+  <img class="cover" src="assets/pages/cover.jpg" alt="Sungai Tanaki cover" onerror="this.style.display='none'"/>
+  <h1 id="startTitle">Sungai Tanaki</h1>
+  <p class="sub" id="startSub"></p>
+  <div class="chips" id="langChips"></div>
+  <div class="stack">
+    <button class="btn btn-primary" id="startBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></svg>
+      <span id="startLabel"></span>
+    </button>
+    <a class="btn btn-secondary" id="view3dLink" href="viewer.html"></a>
+  </div>
+  <ul class="tips" id="tips"></ul>
+</section>
 
-    <a-entity id="anchor0"  mindar-image-target="targetIndex: 0"></a-entity>
-    <a-entity id="anchor1"  mindar-image-target="targetIndex: 1"></a-entity>
-    <a-entity id="anchor2"  mindar-image-target="targetIndex: 2"></a-entity>
-    <a-entity id="anchor3"  mindar-image-target="targetIndex: 3"></a-entity>
-    <a-entity id="anchor4"  mindar-image-target="targetIndex: 4"></a-entity>
-    <a-entity id="anchor5"  mindar-image-target="targetIndex: 5"></a-entity>
-    <a-entity id="anchor6"  mindar-image-target="targetIndex: 6"></a-entity>
-    <a-entity id="anchor7"  mindar-image-target="targetIndex: 7"></a-entity>
-    <a-entity id="anchor8"  mindar-image-target="targetIndex: 8"></a-entity>
-    <a-entity id="anchor9"  mindar-image-target="targetIndex: 9"></a-entity>
-    <a-entity id="anchor10" mindar-image-target="targetIndex: 10"></a-entity>
-    <a-entity id="anchor11" mindar-image-target="targetIndex: 11"></a-entity>
-  </a-scene>
+<!-- 启动加载页 -->
+<section class="sheet" id="bootSheet" hidden>
+  <img class="cover" src="assets/pages/cover.jpg" alt="" onerror="this.style.display='none'"/>
+  <h1 id="bootLabel" style="font-size:24px"></h1>
+  <div class="boot-progress"><div class="bar"><span id="bootBar"></span></div><small id="bootPct"></small></div>
+</section>
 
-  <audio id="narration" preload="auto" loop></audio>
+<!-- 错误页 -->
+<section class="sheet" id="errorSheet" hidden>
+  <div class="err-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><path d="M1 1l22 22"/></svg>
+  </div>
+  <h1 id="errTitle" style="font-size:26px"></h1>
+  <p class="msg" id="errMsg"></p>
+  <div class="stack">
+    <button class="btn btn-primary" id="retryBtn"></button>
+    <a class="btn btn-secondary" id="errView3d" href="viewer.html"></a>
+  </div>
+</section>
 
-  <script src="config.js"></script>
-  <script>
-    const params = new URLSearchParams(location.search);
-    let lang = params.get("lang") || localStorage.getItem("lang") || "en";
-    if (!CONFIG.languages.some(l => l.code === lang)) lang = CONFIG.languages[0].code;
-    const T = CONFIG.ui[lang] || CONFIG.ui.en;
+<div id="dbg"></div>
+<audio id="narration" preload="auto" loop></audio>
 
-    const audio  = document.getElementById("narration");
-    const tip    = document.getElementById("tip");
-    const errBox = document.getElementById("err");
-    const loaded = {};
-    let muted = false, activePage = null;
+<script src="config.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  let lang = params.get("lang") || localStorage.getItem("lang") || "en";
+  if (!CONFIG.languages.some(l => l.code === lang)) lang = CONFIG.languages[0].code;
+  const T = CONFIG.ui[lang] || CONFIG.ui.en;
 
-    const fill = (s, n) => s.replace("{n}", n);
+  const audio = $("narration");
+  const loaded = {};
+  let sceneEl = null, activePage = null, muted = false, mixers = [];
 
-    // ---- 顶栏 / 语言按钮 ----
-    document.getElementById("homeBtn").textContent = "‹ " + T.home;
-    const langbar = document.getElementById("langbar");
+  // ---------- 文案 / 语言 ----------
+  function applyStrings() {
+    document.documentElement.lang = lang === "bm" ? "ms" : lang;
+    document.title = CONFIG.bookTitle + " · AR";
+    $("startTitle").textContent = CONFIG.bookTitle;
+    $("startSub").textContent = T.sub;
+    $("startLabel").textContent = T.start;
+    $("view3dLink").textContent = T.view;
+    $("view3dLink").href = "viewer.html?page=" + (CONFIG.targetMap[0] || 1) + "&lang=" + lang;
+    $("errView3d").textContent = T.errView3d;
+    $("errView3d").href = "viewer.html?lang=" + lang;
+    $("retryBtn").textContent = T.retry;
+    $("replayLabel").textContent = T.replay;
+    $("resetLabel").textContent = T.reset;
+    $("modelLabel").textContent = T.loading;
+    $("tips").innerHTML = T.tips.map(x => `<li>${x}</li>`).join("");
+    $("homeBtn").href = "index.html?lang=" + lang;
+
+    const chips = $("langChips");
+    chips.innerHTML = `<p class="legend">${T.pickLang}</p>`;
     CONFIG.languages.forEach(L => {
       const b = document.createElement("button");
-      b.className = "pill" + (L.code === lang ? " on" : "");
-      b.textContent = L.label;
-      b.title = L.native;
-      b.onclick = () => {
-        lang = L.code;
-        localStorage.setItem("lang", lang);
-        location.href = "ar.html?lang=" + lang;
-      };
-      langbar.appendChild(b);
+      b.className = "chip" + (L.code === lang ? " active" : "");
+      b.textContent = L.native;
+      b.onclick = () => { lang = L.code; localStorage.setItem("lang", lang); applyStrings(); if (activePage) playNarration(activePage); };
+      chips.appendChild(b);
     });
 
-    function setTipIdle(){ tip.textContent = "🔍 " + T.tipIdle; }
-    setTipIdle();
+    const sel = $("langSelect");
+    sel.innerHTML = CONFIG.languages.map(L =>
+      `<option value="${L.code}" ${L.code === lang ? "selected" : ""}>${L.label}</option>`).join("");
+    sel.onchange = () => { lang = sel.value; localStorage.setItem("lang", lang); applyStrings(); if (activePage) playNarration(activePage); };
 
-    function playNarration(pageNo) {
-      const p = CONFIG.pages[pageNo - 1];
-      const src = p && p.audio[lang];
-      if (!src) return;
-      audio.src = src;
-      audio.currentTime = 0;
-      audio.play().catch(() => {});
+    updatePlayUI();
+  }
+
+  // ---------- 面板切换 ----------
+  function showSheet(id) {
+    ["startSheet", "bootSheet", "errorSheet"].forEach(s => { $(s).hidden = (s !== id); });
+  }
+
+  function showBadge(n) {
+    const b = $("pageBadge");
+    if (n == null) { b.classList.add("off"); return; }
+    b.textContent = T.tipReady.replace("{n}", n);
+    b.classList.remove("off");
+  }
+  function setScanHint(on) {
+    const h = $("hint");
+    if (on) { h.textContent = "🔍 " + T.tipIdle; h.classList.remove("off"); }
+    else h.classList.add("off");
+  }
+  function setModelLoading(on) { $("modelLoading").hidden = !on; }
+
+  // ---------- 音频 ----------
+  function playNarration(pageNo) {
+    const p = CONFIG.pages[pageNo - 1];
+    const src = p && p.audio[lang];
+    if (!src) return;
+    audio.src = src; audio.currentTime = 0;
+    audio.play().catch(() => {});
+  }
+  function updatePlayUI() {
+    const playing = !audio.paused && !audio.ended;
+    document.querySelector(".i-pause").hidden = !playing;
+    document.querySelector(".i-play").hidden = playing;
+    $("playLabel").textContent = playing ? T.pause : T.play;
+  }
+
+  // ---------- 模型 ----------
+  function buildModel(anchorIndex, pageNo) {
+    const p = CONFIG.pages[pageNo - 1];
+    const anchor = $("anchor" + anchorIndex);
+    if (!p || !anchor) return;
+    const m = document.createElement("a-gltf-model");
+    m.setAttribute("src", p.model);
+    m.setAttribute("position", "0 0.1 0");
+    m.setAttribute("scale", "0.21 0.21 0.21");
+    m.addEventListener("model-error", () => { setModelLoading(false); showBadge(null); $("hint").textContent = "⚠️ " + T.tipMissing.replace("{n}", pageNo); });
+    m.addEventListener("model-loaded", () => { setModelLoading(false); showBadge(pageNo); startAnim(m); });
+    anchor.appendChild(m);
+  }
+
+  const clipIndex = (CONFIG.animClip === undefined) ? 0 : CONFIG.animClip;
+  function startAnim(entity) {
+    if (clipIndex < 0) return;
+    const obj = entity.getObject3D("mesh");
+    if (!obj || !obj.animations || !obj.animations.length) return;
+    const mixer = new THREE.AnimationMixer(obj);
+    mixer.clipAction(obj.animations[Math.min(clipIndex, obj.animations.length - 1)]).play();
+    mixers.push(mixer);
+  }
+
+  // ---------- 识别 ----------
+  function onFound(ai) {
+    const pageNo = CONFIG.targetMap[ai];
+    if (!pageNo || activePage === pageNo) return;
+    activePage = pageNo;
+    setScanHint(false);
+    $("controls").classList.remove("off");
+    if (!loaded[pageNo]) {
+      setModelLoading(true);
+      buildModel(ai, pageNo);
+      loaded[pageNo] = true;
+    } else {
+      showBadge(pageNo);
+    }
+    playNarration(pageNo);
+  }
+  function onLost(ai) {
+    const pageNo = CONFIG.targetMap[ai];
+    if (!pageNo || activePage !== pageNo) return;
+    activePage = null;
+    audio.pause(); audio.currentTime = 0;
+    showBadge(null); setModelLoading(false); setScanHint(true);
+    $("controls").classList.add("off");
+  }
+
+  // ---------- 相机画面尺寸修正 ----------
+  function refit() {
+    const sys = sceneEl && sceneEl.systems["mindar-image-system"];
+    if (!sys || !sys.video || !sys.video.videoWidth) return;
+    try { sys._resize(); } catch (e) {}
+  }
+
+  // ---------- 动态注入 AR 场景（点开始后才请求相机） ----------
+  function buildScene() {
+    const stage = $("stage");
+    sceneEl = document.createElement("a-scene");
+    sceneEl.setAttribute("mindar-image", "imageTargetSrc: ./assets/targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;");
+    sceneEl.setAttribute("embedded", "");
+    sceneEl.setAttribute("vr-mode-ui", "enabled: false");
+    sceneEl.setAttribute("device-orientation-permission-ui", "enabled: false");
+    sceneEl.setAttribute("renderer", "colorManagement: true; antialias: true; physicallyCorrectLights: true");
+    sceneEl.innerHTML = `
+      <a-light type="ambient" intensity="1.15"></a-light>
+      <a-light type="directional" position="0 2 1" intensity="1.5"></a-light>
+      <a-camera></a-camera>
+      ${Array.from({ length: 12 }, (_, i) =>
+        `<a-entity id="anchor${i}" mindar-image-target="targetIndex: ${i}"></a-entity>`).join("")}
+    `;
+    stage.appendChild(sceneEl);
+
+    for (let i = 0; i < 12; i++) {
+      const el = $("anchor" + i);
+      if (!el) continue;
+      el.addEventListener("targetFound", () => onFound(i));
+      el.addEventListener("targetLost", () => onLost(i));
     }
 
-    function buildModel(anchorIndex, pageNo) {
-      const p = CONFIG.pages[pageNo - 1];
-      const anchor = document.getElementById("anchor" + anchorIndex);
-      if (!p || !anchor) return;
-      const m = document.createElement("a-gltf-model");
-      m.setAttribute("src", p.model);
-      m.setAttribute("position", "0 0.1 0");
-      m.setAttribute("scale", "0.21 0.21 0.21");
-      m.addEventListener("model-error", () => { tip.textContent = "⚠️ " + fill(T.tipMissing, pageNo); });
-      m.addEventListener("model-loaded", () => { tip.textContent = "✅ " + fill(T.tipReady, pageNo); startAnim(m); });
-      anchor.appendChild(m);
-    }
+    sceneEl.addEventListener("arReady", () => {
+      refit();
+      [300, 800, 1600, 2600].forEach(t => setTimeout(refit, t));
+      showSheet(null);
+      $("topbar").hidden = false;
+      $("viewfinder").hidden = false;
+      setScanHint(true);
+    });
+    sceneEl.addEventListener("arError", showError);
 
-    // ---- 模型自带动画 ----
-    const sceneEl = document.querySelector("a-scene");
-    const mixers = [];
-    const clipIndex = (CONFIG.animClip === undefined) ? 0 : CONFIG.animClip;
-
-    function startAnim(entity) {
-      if (clipIndex < 0) return;
-      const obj = entity.getObject3D("mesh");
-      if (!obj || !obj.animations || !obj.animations.length) return;
-      const mixer = new THREE.AnimationMixer(obj);
-      mixer.clipAction(obj.animations[Math.min(clipIndex, obj.animations.length - 1)]).play();
-      mixers.push(mixer);
-    }
     sceneEl.addEventListener("tick", (e) => {
       const dt = (e.detail.timeDelta || 16) / 1000;
       for (let i = 0; i < mixers.length; i++) mixers[i].update(dt);
     });
+  }
 
-    function onFound(anchorIndex) {
-      const pageNo = CONFIG.targetMap[anchorIndex];
-      if (!pageNo) return;
-      if (activePage === pageNo) return;
-      activePage = pageNo;
-      if (!loaded[pageNo]) {
-        tip.textContent = "⏳ " + fill(T.tipLoading, pageNo);
-        buildModel(anchorIndex, pageNo);
-        loaded[pageNo] = true;
-      } else {
-        tip.textContent = "✅ " + fill(T.tipReady, pageNo);
-      }
-      playNarration(pageNo);
-    }
+  async function preflightCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("NotFoundError");
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    stream.getTracks().forEach(t => t.stop());
+  }
 
-    function onLost(anchorIndex) {
-      const pageNo = CONFIG.targetMap[anchorIndex];
-      if (!pageNo || activePage !== pageNo) return;
-      activePage = null;
-      setTipIdle();
-      audio.pause();
-      audio.currentTime = 0;
-    }
+  async function startAR() {
+    showSheet("bootSheet");
+    $("bootLabel").textContent = T.bootCamera;
+    $("bootBar").style.width = "0%"; $("bootPct").textContent = "";
+    try { await preflightCamera(); } catch (e) { return showError(e); }
 
-    for (let i = 0; i < 12; i++) {
-      const el = document.getElementById("anchor" + i);
-      if (!el) continue;
-      el.addEventListener("targetFound", () => onFound(i));
-      el.addEventListener("targetLost",  () => onLost(i));
-    }
+    $("bootLabel").textContent = T.bootTarget;
+    $("bootBar").style.width = "60%"; $("bootPct").textContent = "60%";
+    if (!sceneEl) buildScene();
 
-    // ---- 调试面板（网址加 ?debug=1）----
-    const dbgEl = document.getElementById("dbg");
-    if (params.get("debug") === "1") {
-      dbgEl.style.display = "block";
-      setInterval(() => {
-        const s = sceneEl.systems["mindar-image-system"];
-        const v = s && s.video;
-        const r = v ? v.getBoundingClientRect() : null;
-        dbgEl.textContent =
-          "video " + (v ? v.videoWidth + "×" + v.videoHeight : "-") +
-          "\ndraw  " + (r ? Math.round(r.width) + "×" + Math.round(r.height) : "-") +
-          "\nview  " + innerWidth + "×" + innerHeight +
-          "\nfound " + (activePage || "-");
-      }, 700);
-    }
+    // 解锁音频（必须在点击手势内）
+    audio.play().then(() => audio.pause()).catch(() => {});
+  }
 
-    // ---- 相机画面尺寸修正 ----
-    function refit(){
-      const sys = sceneEl.systems["mindar-image-system"];
-      if (!sys || !sys.video || !sys.video.videoWidth) return;
-      try { sys._resize(); } catch (e) {}
-    }
-    sceneEl.addEventListener("arReady", () => {
-      refit();
-      [300, 800, 1600, 2600].forEach(t => setTimeout(refit, t));
-    });
-    window.addEventListener("orientationchange", () => setTimeout(refit, 300));
-    window.addEventListener("resize", () => setTimeout(refit, 200));
+  function showError(e) {
+    console.error("[AR]", e);
+    $("topbar").hidden = true;
+    setScanHint(false);
+    $("viewfinder").hidden = true;
+    $("controls").classList.add("off");
+    $("errTitle").textContent = T.errTitle;
+    $("errMsg").innerHTML = T.errBody;
+    showSheet("errorSheet");
+  }
 
-    // 相机打不开 → 提示
-    sceneEl.addEventListener("arError", () => {
-      errBox.style.display = "flex";
-      errBox.innerHTML = "<div><h3>" + T.errTitle + "</h3>" + T.errBody + "</div>";
-    });
+  // ---------- 控制条 ----------
+  $("playBtn").onclick = () => {
+    if (!activePage) return;
+    if (audio.ended) playNarration(activePage);
+    else if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+    updatePlayUI();
+  };
+  $("replayBtn").onclick = () => { if (activePage) playNarration(activePage); };
+  $("resetBtn").onclick = () => {
+    if (!activePage) return;
+    const anchor = $("anchor" + CONFIG.targetMap.indexOf(activePage));
+    const m = anchor && anchor.querySelector("a-gltf-model");
+    if (m) { m.setAttribute("position", "0 0.1 0"); m.setAttribute("scale", "0.21 0.21 0.21"); }
+  };
+  $("muteBtn").onclick = () => {
+    muted = !muted; audio.muted = muted;
+    $("muteBtn").setAttribute("aria-pressed", muted);
+    document.querySelector(".on").hidden = muted;
+    document.querySelector(".off").hidden = !muted;
+  };
+  $("retryBtn").onclick = startAR;
+  $("startBtn").onclick = startAR;
 
-    document.getElementById("soundBtn").onclick = () => {
-      muted = !muted;
-      audio.muted = muted;
-      document.getElementById("soundBtn").textContent = muted ? "🔇" : "🔊";
-    };
+  window.addEventListener("orientationchange", () => setTimeout(refit, 300));
+  window.addEventListener("resize", () => setTimeout(refit, 200));
+  document.addEventListener("visibilitychange", () => { if (document.hidden) audio.pause(); });
 
-    window.addEventListener("touchstart", function unlock(){
-      audio.play().then(() => audio.pause()).catch(() => {});
-    }, { once: true });
-  </script>
+  // ---------- 调试面板 ----------
+  const dbgEl = $("dbg");
+  if (params.get("debug") === "1") {
+    dbgEl.style.display = "block";
+    setInterval(() => {
+      const sys = sceneEl && sceneEl.systems["mindar-image-system"];
+      const v = sys && sys.video;
+      const r = v ? v.getBoundingClientRect() : null;
+      dbgEl.textContent = "video " + (v ? v.videoWidth + "×" + v.videoHeight : "-") +
+        "\ndraw  " + (r ? Math.round(r.width) + "×" + Math.round(r.height) : "-") +
+        "\nview  " + innerWidth + "×" + innerHeight +
+        "\nfound " + (activePage || "-");
+    }, 700);
+  }
+
+  applyStrings();
+</script>
 </body>
 </html>
