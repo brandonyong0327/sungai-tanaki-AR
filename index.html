@@ -163,11 +163,29 @@
   .step b{font-size:1.05rem}
   .step p{color:var(--muted);margin-top:6px;font-size:.98rem}
 
-  .langs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center}
-  .lang{padding:12px 20px;border-radius:12px;background:var(--card);border:1px solid var(--line);
-        color:var(--cream);font-weight:700;cursor:pointer;font-size:1rem;font-family:inherit;transition:all .2s}
-  .lang:hover{border-color:rgba(233,181,72,.4)}
-  .lang.active{background:var(--orange);border-color:var(--orange);color:#2a1a05}
+  .lang-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px;
+        max-width:960px;margin-left:auto;margin-right:auto}
+  @media(max-width:720px){.lang-cards{grid-template-columns:1fr}}
+  .lang-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
+        display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+  .lang-card .badge{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+        font-weight:800;font-size:.9rem;color:#2a1a05;flex:none;margin:0}
+  .lang-card[data-code="en"] .badge{background:var(--gold)}
+  .lang-card[data-code="bm"] .badge{background:var(--orange)}
+  .lang-card[data-code="dsn"] .badge{background:#9a6a33}
+  .lang-card h3{font-family:Georgia,serif;font-size:1.15rem;color:var(--cream)}
+  .lang-card .desc{color:var(--muted);font-size:.92rem;line-height:1.5;flex:1}
+  .sample-row{display:flex;align-items:center;gap:10px;width:100%}
+  .sample-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+        background:rgba(255,255,255,.08);color:var(--cream);display:grid;place-items:center;
+        cursor:pointer;flex:none;padding:0}
+  .sample-btn svg{width:18px;height:18px}
+  .sample-row .lbl{color:var(--muted);font-size:.9rem}
+  .card-actions{display:flex;gap:10px;width:100%}
+  .card-actions a{flex:1;text-align:center;padding:10px;border-radius:10px;font-weight:700;
+        font-size:.9rem;text-decoration:none}
+  .card-actions .ar{background:var(--orange);color:#2a1a05}
+  .card-actions .v3d{background:transparent;border:1px solid var(--line);color:var(--cream)}
 
   .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px;
         max-width:720px;margin-left:auto;margin-right:auto}
@@ -272,9 +290,9 @@
     </div>
   </section>
 
-  <h2 id="langs" class="reveal" data-i18n="pickLang">Pick a language</h2>
-  <p class="lead reveal" data-i18n="pickLangSub"></p>
-  <div class="langs reveal" id="langRow"></div>
+  <h2 id="langs" class="reveal" data-i18n="listenTitle"></h2>
+  <p class="lead reveal" data-i18n="listenSub"></p>
+  <div class="lang-cards reveal" id="langRow"></div>
 
   <h2 id="steps" class="reveal" data-i18n="howTitle">How it works</h2>
   <div class="steps reveal">
@@ -293,6 +311,7 @@
   <footer class="reveal" data-i18n="footer"></footer>
 </div>
 
+<audio id="sampleAudio" preload="none"></audio>
 <script src="config.js?v=22"></script>
 <script>
   const params = new URLSearchParams(location.search);
@@ -318,15 +337,48 @@
   document.getElementById("statLive").textContent = CONFIG.targetMap.length;
   document.getElementById("statLangs").textContent = CONFIG.languages.length;
 
-  // 语言按钮（大按钮一行）
+  // 三语试听卡片（样片统一用 page 1；只试听，不切换页面语言）
+  const sampleAudio = document.getElementById("sampleAudio");
+  let sampleBtn = null;
+  function syncSampleIcon(btn, playing) {
+    btn.querySelector(".ic-play").style.display = playing ? "none" : "";
+    btn.querySelector(".ic-pause").style.display = playing ? "" : "none";
+  }
+  function resetSample() {
+    sampleAudio.pause(); sampleAudio.currentTime = 0;
+    if (sampleBtn) { syncSampleIcon(sampleBtn, false); sampleBtn = null; }
+  }
   const row = document.getElementById("langRow");
-  HOME_LANGS.forEach(L => {
-    const b = document.createElement("button");
-    b.className = "lang" + (L.code === lang ? " active" : "");
-    b.textContent = L.native;
-    b.onclick = () => { localStorage.setItem("lang", L.code); location.href = "index.html?lang=" + L.code; };
-    row.appendChild(b);
+  CONFIG.languages.forEach(L => {
+    const card = document.createElement("div");
+    card.className = "lang-card";
+    card.dataset.code = L.code;
+    card.innerHTML =
+      `<div class="badge">${L.label}</div>
+       <h3>${L.name}</h3>
+       <p class="desc">${L.desc}</p>
+       <div class="sample-row">
+         <button class="sample-btn" aria-label="${T.hearSample}">
+           <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 001.5.86l10.4-6.5a1 1 0 000-1.72L9.5 4.64A1 1 0 008 5.5z"/></svg>
+           <svg class="ic-pause" style="display:none" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+         </button>
+         <span class="lbl">${T.hearSample}</span>
+       </div>
+       <div class="card-actions">
+         <a class="ar" href="ar.html?lang=${L.code}">AR</a>
+         <a class="v3d" href="viewer.html?page=1&lang=${L.code}">3D</a>
+       </div>`;
+    const btn = card.querySelector(".sample-btn");
+    btn.onclick = () => {
+      if (sampleBtn === btn && !sampleAudio.paused) { resetSample(); return; }
+      resetSample();
+      sampleAudio.src = CONFIG.pages[0].audio[L.code];
+      sampleAudio.play().catch(() => {});
+      sampleBtn = btn; syncSampleIcon(btn, true);
+    };
+    row.appendChild(card);
   });
+  sampleAudio.addEventListener("ended", resetSample);
 
   // 顶栏迷你语言切换
   const mini = document.getElementById("miniLang");

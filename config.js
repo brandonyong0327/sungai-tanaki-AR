@@ -13,9 +13,9 @@ const CONFIG = {
   //  语言（code = assets/audio 下的文件夹名）
   // -----------------------------------------------------------
   languages: [
-    { code: "en",  label: "EN",  name: "English",       native: "English" },
-    { code: "bm",  label: "BM",  name: "Bahasa Melayu", native: "Bahasa Melayu" },
-    { code: "dsn", label: "KAD", name: "Kadazandusun",  native: "Kadazandusun" },
+    { code: "en",  label: "EN",  name: "English",       native: "English",       desc: "Full narration in English." },
+    { code: "bm",  label: "BM",  name: "Bahasa Melayu", native: "Bahasa Melayu", desc: "Full narration in Malay." },
+    { code: "dsn", label: "DSN", name: "Kadazandusun",  native: "Kadazandusun",  desc: "Narration in Dusun, one of Sabah's mother tongues." },
   ],
 
   // -----------------------------------------------------------
@@ -59,6 +59,9 @@ CONFIG.ui = {
     statLangs: "narration languages",
     pickLang: "Pick a language",
     pickLangSub: "Choose the narration language. Your choice is remembered for scanning.",
+    listenTitle: "Listen in your language.",
+    listenSub: "Tap play to hear a sample. Every sample uses page 1.",
+    hearSample: "Hear a sample",
     howTitle: "How it works",
     s1t: "Allow camera",
     s1b: "Tap “Start scanning” and allow camera access. Everything runs in your browser.",
@@ -128,6 +131,9 @@ CONFIG.ui = {
     statLangs: "bahasa naratif",
     pickLang: "Pilih bahasa",
     pickLangSub: "Pilih bahasa naratif. Pilihan anda akan diingati semasa mengimbas.",
+    listenTitle: "Dengar dalam bahasa anda.",
+    listenSub: "Ketik main untuk dengar contoh. Semua contoh guna halaman 1.",
+    hearSample: "Dengar contoh",
     howTitle: "Cara ia berfungsi",
     s1t: "Benarkan kamera",
     s1b: "Tekan “Mula mengimbas” dan benarkan akses kamera. Semuanya berjalan dalam pelayar anda.",
@@ -197,6 +203,9 @@ CONFIG.ui = {
     statLangs: "boros susuyan",
     pickLang: "Pilio o boros",
     pickLangSub: "Pilio o boros susuyan. Otokis o pinilio nu id minsimbau.",
+    listenTitle: "Tuduko id boros nu.",
+    listenSub: "Pikit play om tuduko conto. Ngai' o conto id kayatan 1.",
+    hearSample: "Tuduko conto",
     howTitle: "Poingkuro o momoguna",
     s1t: "Izin no kamera",
     s1b: "Pikit “Momulai Minsimbau” om izin no kamera. Ngai' o pointoton id browser nu.",
