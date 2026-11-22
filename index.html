@@ -79,6 +79,7 @@
         transform-style:preserve-3d;transition:transform .25s ease;
         transform:perspective(1000px) rotateY(36deg) rotateX(4deg) rotateZ(3deg);
         animation:bookIn .7s ease .12s both}
+  .book.front-facing{transform:perspective(1000px) rotateY(0) rotateX(0) rotateZ(0)}
   @keyframes bookIn{from{opacity:0}to{opacity:1}}
   .book::before{content:"";position:absolute;inset:-10% -18%;z-index:-2;
         background:radial-gradient(ellipse at 50% 40%,rgba(244,236,220,.10),transparent 70%)}
@@ -396,6 +397,10 @@
   const bookPages = ["assets/pages/cover.jpg", ...CONFIG.pages.map(p => p.thumb)];
   let pg = 0, animating = false;
   const cover = document.getElementById("coverCard");
+  // 触摸设备（手机/平板）：书本保持正面，不做倾角跟随
+  if (matchMedia("(pointer:coarse)").matches || "ontouchstart" in window) {
+    cover.classList.add("front-facing");
+  }
   const pageBack = document.getElementById("pageBack");
   const pageLeaf = document.getElementById("pageLeaf");
   const backImg = document.getElementById("backImg");
@@ -455,7 +460,7 @@
   }
   function resetIdle() {
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(goCover, 8000);
+    idleTimer = setTimeout(goCover, 4000);
   }
   ["click", "touchstart", "pointerdown", "mousemove", "keydown"].forEach(ev =>
     cover.addEventListener(ev, resetIdle, { passive: true }));
