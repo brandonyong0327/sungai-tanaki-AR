@@ -90,6 +90,20 @@
   h2{font-family:Georgia,serif;font-size:clamp(23px,5.5vw,30px);color:var(--cream);margin:48px 0 6px}
   .lead{color:var(--muted);font-size:1rem;margin-bottom:14px}
 
+  /* ---------- about the story ---------- */
+  .about-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:32px;margin-top:46px;align-items:start}
+  .kicker{display:inline-block;color:var(--orange);letter-spacing:.14em;text-transform:uppercase;font-size:.78rem;font-weight:800;margin-bottom:12px}
+  .about-head{margin:0 0 18px;line-height:1.15}
+  .chars{display:flex;gap:12px;flex-wrap:wrap}
+  .char{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;
+        transition:transform .25s,border-color .25s}
+  .char:hover{transform:translateY(-5px);border-color:rgba(233,181,72,.4)}
+  .char b{font-family:Georgia,serif;font-size:1.15rem;display:block;margin-bottom:5px;color:var(--cream)}
+  .char p{color:var(--muted);font-size:.92rem;line-height:1.5}
+  .about-text p{margin-bottom:15px;color:var(--cream)}
+  .about-text .drop::first-letter{font-family:Georgia,serif;font-weight:800;font-size:2.7em;float:left;line-height:.82;
+        color:var(--gold);padding:4px 10px 0 0}
+
   .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:14px}
   .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
         transition:transform .25s,border-color .25s}
@@ -139,6 +153,7 @@
     .actions{justify-content:center;flex-direction:column;align-items:stretch}
     .btn{justify-content:center}
     .steps{grid-template-columns:1fr}
+    .about-grid{grid-template-columns:1fr;gap:22px}
     .grid{gap:8px}
   }
 </style>
@@ -151,6 +166,7 @@
 <nav class="nav">
   <a class="brand" href="index.html"><span class="mark">✦</span> Sungai Tanaki</a>
   <div class="nav-links">
+    <a href="#about" data-i18n="aboutNav">Story</a>
     <a href="#grid" data-i18n="gridTitle">Pages</a>
     <a href="#langs" data-i18n="pickLang">Language</a>
     <a href="#steps" data-i18n="howTitle">Help</a>
@@ -183,6 +199,20 @@
     </a>
   </div>
 
+  <section id="about" class="reveal">
+    <div class="about-grid">
+      <div class="about-left">
+        <span class="kicker" data-i18n="aboutKicker"></span>
+        <h2 class="about-head" data-i18n="aboutHeadline"></h2>
+        <div class="chars" id="charRow"></div>
+      </div>
+      <div class="about-text">
+        <p class="drop" data-i18n="aboutP1"></p>
+        <p data-i18n="aboutP2"></p>
+      </div>
+    </div>
+  </section>
+
   <h2 id="langs" class="reveal" data-i18n="pickLang">Pick a language</h2>
   <p class="lead reveal" data-i18n="pickLangSub"></p>
   <div class="langs reveal" id="langRow"></div>
@@ -201,7 +231,7 @@
   <footer class="reveal" data-i18n="footer"></footer>
 </div>
 
-<script src="config.js?v=18"></script>
+<script src="config.js?v=19"></script>
 <script>
   const params = new URLSearchParams(location.search);
   let lang = params.get("lang") || localStorage.getItem("lang") || "en";
@@ -249,6 +279,15 @@
     "viewer.html?page=" + (CONFIG.targetMap[0] || 1) + "&lang=" + lang;
   document.getElementById("coverCard").href =
     "viewer.html?page=" + (CONFIG.targetMap[0] || 1) + "&lang=" + lang;
+
+  // 角色卡（About the Story）
+  const charRow = document.getElementById("charRow");
+  (T.aboutChars || []).forEach(c => {
+    const d = document.createElement("div");
+    d.className = "char";
+    d.innerHTML = `<b>${c.name}</b><p>${c.role}</p>`;
+    charRow.appendChild(d);
+  });
 
   const grid = document.getElementById("pageGrid");
   const live = CONFIG.targetMap;
