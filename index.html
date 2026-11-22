@@ -96,14 +96,21 @@
         letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
   .book-front{position:absolute;left:19px;right:0;top:0;bottom:0;z-index:2;border-radius:4px 14px 14px 4px;overflow:hidden;
         border:1px solid rgba(255,255,255,.22);
-        box-shadow:0 24px 50px rgba(0,0,0,.5);animation:floaty 6s ease-in-out infinite}
+        box-shadow:0 24px 50px rgba(0,0,0,.5);animation:floaty 6s ease-in-out infinite;
+        perspective:1200px;touch-action:manipulation}
   .book:hover .book-front{box-shadow:0 36px 80px rgba(0,0,0,.6),0 0 0 1px rgba(233,181,72,.4)}
-  .book-front img{width:100%;height:100%;object-fit:cover;display:block}
-  .page-view{position:absolute;inset:0}
-  .page-view.flip-next{animation:flipNext .45s ease}
-  .page-view.flip-prev{animation:flipPrev .45s ease}
-  @keyframes flipNext{from{transform:perspective(900px) rotateY(-28deg);opacity:.35}to{transform:perspective(900px) rotateY(0);opacity:1}}
-  @keyframes flipPrev{from{transform:perspective(900px) rotateY(28deg);opacity:.35}to{transform:perspective(900px) rotateY(0);opacity:1}}
+  .page-layer{position:absolute;inset:0}
+  .page-layer img{width:100%;height:100%;object-fit:cover;display:block}
+  #pageBack{z-index:1}
+  #pageLeaf{z-index:2;transform-origin:left center;backface-visibility:hidden;visibility:hidden}
+  #pageLeaf.turn-next{visibility:visible;animation:turnNext .55s cubic-bezier(.3,.7,.4,1) forwards}
+  #pageLeaf.turn-prev{visibility:visible;animation:turnPrev .55s cubic-bezier(.3,.7,.4,1) forwards}
+  @keyframes turnNext{0%{transform:rotateY(0)}100%{transform:rotateY(-172deg)}}
+  @keyframes turnPrev{0%{transform:rotateY(-172deg)}100%{transform:rotateY(0)}}
+  #pageLeaf::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+        background:linear-gradient(90deg,rgba(20,12,4,.45),rgba(20,12,4,0) 55%)}
+  #pageLeaf.turn-next::after,#pageLeaf.turn-prev::after{animation:leafShade .55s ease}
+  @keyframes leafShade{0%{opacity:0}45%{opacity:.7}100%{opacity:0}}
   .pg-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:30px;height:30px;border-radius:50%;
         background:rgba(12,33,21,.72);color:var(--gold2);border:1px solid rgba(233,181,72,.45);
         font-size:1.15rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
@@ -191,7 +198,7 @@
     html{font-size:18px}
     .nav-links{display:none}
     .hero{grid-template-columns:1fr;gap:22px;text-align:center}
-    .book{order:-1;width:min(240px,70vw)}
+    .book{order:-1;width:min(240px,70vw);transform:perspective(1000px) rotateY(0) rotateX(0) rotateZ(0)}
     .badge{margin:0 auto 16px}
     .sub{margin:0 auto}
     .actions{justify-content:center;flex-direction:column;align-items:stretch}
@@ -199,6 +206,10 @@
     .steps{grid-template-columns:1fr}
     .about-grid{grid-template-columns:1fr;gap:22px}
     .grid{gap:8px}
+  }
+  /* 触摸设备：书本保持正面朝向，不做倾角跟随 */
+  @media (pointer:coarse){
+    .book{transform:perspective(1000px) rotateY(0) rotateX(0) rotateZ(0)}
   }
 </style>
 </head>
@@ -244,9 +255,8 @@
       <div class="book-pages"></div>
       <div class="book-spine"><span class="spine-title">Sungai Tanaki</span></div>
       <div class="book-front" id="bookFront">
-        <div class="page-view" id="pageView">
-          <img id="pageImg" src="assets/pages/cover.jpg" alt="Sungai Tanaki cover" onerror="this.src='assets/pages/page1.jpg'"/>
-        </div>
+        <div class="page-layer" id="pageBack"><img id="backImg" src="assets/pages/cover.jpg" alt="Sungai Tanaki page" onerror="this.src='assets/pages/page1.jpg'"/></div>
+        <div class="page-layer" id="pageLeaf"><img id="leafImg" alt="Sungai Tanaki page"/></div>
         <button class="pg-btn prev" id="pgPrev" aria-label="Previous page">‹</button>
         <button class="pg-btn next" id="pgNext" aria-label="Next page">›</button>
         <div class="pg-ind" id="pgInd">1 / 13</div>
@@ -382,49 +392,86 @@
     sp.appendChild(s);
   }
 
-  // ---- 书本翻页（封面 + 故事 12 页，点击翻页） ----
+  // ---- 书本翻页（封面 + 故事 12 页，绕书脊真实翻页） ----
   const bookPages = ["assets/pages/cover.jpg", ...CONFIG.pages.map(p => p.thumb)];
-  let pg = 0;
-  const pageImg = document.getElementById("pageImg");
-  const pageView = document.getElementById("pageView");
+  let pg = 0, animating = false;
+  const cover = document.getElementById("coverCard");
+  const pageBack = document.getElementById("pageBack");
+  const pageLeaf = document.getElementById("pageLeaf");
+  const backImg = document.getElementById("backImg");
+  const leafImg = document.getElementById("leafImg");
   const pgPrev = document.getElementById("pgPrev");
   const pgNext = document.getElementById("pgNext");
   const pgInd = document.getElementById("pgInd");
 
-  function renderBook(dir) {
-    pageImg.src = bookPages[pg];
-    pageView.classList.remove("flip-next", "flip-prev");
-    void pageView.offsetWidth; // 重启动画
-    pageView.classList.add(dir === -1 ? "flip-prev" : "flip-next");
+  function paint() {
+    backImg.src = bookPages[pg];
+    leafImg.src = bookPages[pg];
     pgInd.textContent = (pg + 1) + " / " + bookPages.length;
     pgPrev.disabled = pg === 0;
     pgNext.disabled = pg === bookPages.length - 1;
   }
-  function goNext() { if (pg < bookPages.length - 1) { pg++; renderBook(1); } }
-  function goPrev() { if (pg > 0) { pg--; renderBook(-1); } }
+
+  function turn(dir) {
+    const target = pg + dir;
+    if (animating || target < 0 || target > bookPages.length - 1) return;
+    animating = true;
+    backImg.src = bookPages[target];   // 翻完落下的目标页，垫在底层
+    leafImg.src = bookPages[pg];       // 正在掀起的当前页
+    pageLeaf.classList.remove("turn-next", "turn-prev");
+    pageLeaf.style.visibility = "visible";
+    void pageLeaf.offsetWidth;
+    pageLeaf.classList.add(dir === 1 ? "turn-next" : "turn-prev");
+    setTimeout(() => {
+      pg = target;
+      pageLeaf.classList.remove("turn-next", "turn-prev");
+      pageLeaf.style.visibility = "hidden";
+      paint();
+      animating = false;
+    }, 560);
+  }
+  const goNext = () => turn(1);
+  const goPrev = () => turn(-1);
   pgNext.addEventListener("click", e => { e.stopPropagation(); goNext(); });
   pgPrev.addEventListener("click", e => { e.stopPropagation(); goPrev(); });
-  pageView.addEventListener("click", e => {
-    const r = pageView.getBoundingClientRect();
+  document.getElementById("bookFront").addEventListener("click", e => {
+    if (e.target.closest(".pg-btn")) return;
+    const r = e.currentTarget.getBoundingClientRect();
     if (e.clientX - r.left > r.width / 2) goNext(); else goPrev();
   });
   document.addEventListener("keydown", e => {
     if (e.key === "ArrowRight") goNext();
     if (e.key === "ArrowLeft") goPrev();
   });
-  renderBook(1);
+  paint();
 
-  // 封面卡 3D 倾斜（仅鼠标设备）
-  const cover = document.getElementById("coverCard");
+  // 闲置 8 秒：自动回到封面，并恢复默认摆放角度
+  let idleTimer = null;
+  function restoreAngle() { cover.style.transform = ""; }
+  function goCover() {
+    if (animating) { resetIdle(); return; }
+    if (pg !== 0) { pg = 0; paint(); }
+    restoreAngle();
+  }
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(goCover, 8000);
+  }
+  ["click", "touchstart", "pointerdown", "mousemove", "keydown"].forEach(ev =>
+    cover.addEventListener(ev, resetIdle, { passive: true }));
+  resetIdle();
+
+  // 封面卡 3D 倾斜（仅鼠标设备；翻页过程中保持当前角度）
   if (matchMedia("(pointer:fine)").matches) {
     cover.addEventListener("mousemove", e => {
+      if (animating) return;
       const r = cover.getBoundingClientRect();
       const x = (e.clientX - r.left) / r.width - 0.5;
       const y = (e.clientY - r.top) / r.height - 0.5;
       cover.style.transform =
         `perspective(900px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg) translateY(-4px)`;
     });
-    cover.addEventListener("mouseleave", () => { cover.style.transform = ""; });
+    cover.addEventListener("mouseleave", restoreAngle);
   }
 
   // 滚动显现
