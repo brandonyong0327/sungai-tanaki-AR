@@ -74,16 +74,25 @@
   .btn-ghost{background:rgba(255,255,255,.06);color:var(--cream);border:1px solid rgba(255,255,255,.18)}
   .btn-ghost:hover{transform:translateY(-3px);background:rgba(255,255,255,.1)}
 
-  /* 封面卡片：外框跟随鼠标 3D 倾斜，内框轻轻漂浮 */
-  .cover{position:relative;justify-self:center;width:min(300px,78vw);display:block;text-decoration:none;
-         transform-style:preserve-3d;transition:transform .25s ease}
-  .cover .frame{aspect-ratio:3/4;border-radius:20px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.5);
-       border:1px solid rgba(233,181,72,.25);animation:floaty 6s ease-in-out infinite}
-  .cover:hover .frame{box-shadow:0 36px 80px rgba(0,0,0,.6),0 0 0 1px rgba(233,181,72,.4)}
-  .cover img{width:100%;height:100%;object-fit:cover;display:block}
-  .cover .tag{position:absolute;left:10px;right:10px;bottom:12px;background:rgba(0,0,0,.55);
-       backdrop-filter:blur(6px);border-radius:999px;padding:7px 12px;text-align:center;
-       font-size:.76rem;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 装饰性立体书本（纯展示，不可点击跳转） */
+  .book{position:relative;justify-self:center;width:min(280px,74vw);aspect-ratio:3/4;
+        transform-style:preserve-3d;transition:transform .25s ease;
+        transform:perspective(1000px) rotateY(-7deg) rotateX(1.5deg)}
+  .book-pages{position:absolute;right:-12px;top:10px;bottom:10px;width:13px;border-radius:0 4px 4px 0;
+        background:repeating-linear-gradient(90deg,#efe6cf 0 2px,#cdc2a2 2px 3px);
+        box-shadow:2px 2px 6px rgba(0,0,0,.35)}
+  .book-spine{position:absolute;left:0;top:0;bottom:0;width:17px;border-radius:5px 0 0 5px;
+        background:linear-gradient(90deg,#07140d 0%,#14301f 55%,#24503a 100%);
+        box-shadow:inset -3px 0 5px rgba(0,0,0,.45);
+        border-right:1px solid rgba(233,181,72,.25)}
+  .book-front{position:absolute;inset:0;border-radius:5px 16px 16px 5px;overflow:hidden;
+        box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 1px rgba(233,181,72,.22);
+        animation:floaty 6s ease-in-out infinite}
+  .book:hover .book-front{box-shadow:0 36px 80px rgba(0,0,0,.6),0 0 0 1px rgba(233,181,72,.4)}
+  .book-front img{width:100%;height:100%;object-fit:cover;display:block}
+  .book .tag{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(0,0,0,.55);
+        backdrop-filter:blur(6px);border-radius:999px;padding:7px 12px;text-align:center;
+        font-size:.76rem;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 
   .stats{display:flex;gap:34px;justify-content:center;margin-top:34px;flex-wrap:wrap;color:var(--muted);font-size:.95rem}
@@ -154,9 +163,9 @@
 
   /* 入场 / 滚动显现 */
   @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-  .hero .badge,.hero h1,.hero .sub,.hero .actions,.hero .stats,.hero .cover{animation:fadeUp .7s ease both}
+  .hero .badge,.hero h1,.hero .sub,.hero .actions,.hero .stats,.hero .book{animation:fadeUp .7s ease both}
   .hero h1{animation-delay:.08s}.hero .sub{animation-delay:.16s}.hero .actions{animation-delay:.24s}
-  .hero .stats{animation-delay:.32s}.hero .cover{animation-delay:.12s}
+  .hero .stats{animation-delay:.32s}.hero .book{animation-delay:.12s}
   .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
   .reveal.on{opacity:1;transform:none}
 
@@ -164,7 +173,7 @@
     html{font-size:18px}
     .nav-links{display:none}
     .hero{grid-template-columns:1fr;gap:22px;text-align:center}
-    .cover{order:-1;width:min(240px,70vw)}
+    .book{order:-1;width:min(240px,70vw)}
     .badge{margin:0 auto 16px}
     .sub{margin:0 auto}
     .actions{justify-content:center;flex-direction:column;align-items:stretch}
@@ -213,10 +222,14 @@
         <div><b id="statLangs">0</b> <span data-i18n="statLangs">narration languages</span></div>
       </div>
     </div>
-    <a class="cover" id="coverCard" href="viewer.html?page=1">
-      <div class="frame"><img id="coverImg" src="assets/pages/cover.jpg" alt="Sungai Tanaki cover" onerror="this.src='assets/pages/page1.jpg'"/></div>
-      <div class="tag" data-i18n="coverTag">WebAR · 3 Bahasa · 12 Halaman</div>
-    </a>
+    <div class="book" id="coverCard" aria-label="Sungai Tanaki book cover">
+      <div class="book-pages"></div>
+      <div class="book-spine"></div>
+      <div class="book-front">
+        <img id="coverImg" src="assets/pages/cover.jpg" alt="Sungai Tanaki cover" onerror="this.src='assets/pages/page1.jpg'"/>
+        <div class="tag" data-i18n="coverTag">WebAR · 3 Bahasa · 12 Halaman</div>
+      </div>
+    </div>
   </div>
 
   <section id="about" class="reveal">
@@ -299,8 +312,6 @@
 
   document.getElementById("startBtn").href = "ar.html?lang=" + lang;
   document.getElementById("viewBtn").href =
-    "viewer.html?page=" + (CONFIG.targetMap[0] || 1) + "&lang=" + lang;
-  document.getElementById("coverCard").href =
     "viewer.html?page=" + (CONFIG.targetMap[0] || 1) + "&lang=" + lang;
 
   // 角色卡（About the Story）
