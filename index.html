@@ -74,20 +74,25 @@
   .btn-ghost{background:rgba(255,255,255,.06);color:var(--cream);border:1px solid rgba(255,255,255,.18)}
   .btn-ghost:hover{transform:translateY(-3px);background:rgba(255,255,255,.1)}
 
-  /* 装饰性立体书本（纯展示，不可点击跳转） */
-  .book{position:relative;justify-self:center;width:min(280px,74vw);aspect-ratio:3/4;
+  /* 装饰性硬壳书样机（纯展示，不可点击跳转） */
+  .book{position:relative;justify-self:center;width:min(262px,70vw);aspect-ratio:3/4;
         transform-style:preserve-3d;transition:transform .25s ease;
-        transform:perspective(1000px) rotateY(-7deg) rotateX(1.5deg)}
-  .book-pages{position:absolute;right:-12px;top:10px;bottom:10px;width:13px;border-radius:0 4px 4px 0;
-        background:repeating-linear-gradient(90deg,#efe6cf 0 2px,#cdc2a2 2px 3px);
-        box-shadow:2px 2px 6px rgba(0,0,0,.35)}
-  .book-spine{position:absolute;left:0;top:0;bottom:0;width:17px;border-radius:5px 0 0 5px;
-        background:linear-gradient(90deg,#07140d 0%,#14301f 55%,#24503a 100%);
-        box-shadow:inset -3px 0 5px rgba(0,0,0,.45);
-        border-right:1px solid rgba(233,181,72,.25)}
-  .book-front{position:absolute;inset:0;border-radius:5px 16px 16px 5px;overflow:hidden;
-        box-shadow:0 30px 70px rgba(0,0,0,.55),0 0 0 1px rgba(233,181,72,.22);
-        animation:floaty 6s ease-in-out infinite}
+        transform:perspective(1100px) rotateY(-16deg) rotateX(2deg)}
+  .book::after{content:"";position:absolute;left:2%;right:-10%;bottom:-22px;height:28px;z-index:-1;
+        background:radial-gradient(ellipse at 62% 50%,rgba(0,0,0,.5),transparent 68%);filter:blur(7px)}
+  .book-pages{position:absolute;right:-11px;top:9px;bottom:9px;width:12px;border-radius:0 3px 3px 0;
+        background:repeating-linear-gradient(90deg,#f6f1e3 0 2px,#d8cfb4 2px 3px);
+        box-shadow:2px 3px 8px rgba(0,0,0,.3)}
+  .book-spine{position:absolute;left:0;top:0;bottom:0;width:16px;border-radius:6px 0 0 6px;
+        background:linear-gradient(90deg,#0a1c12,#173524 60%,#2a553d);
+        box-shadow:inset -3px 0 6px rgba(0,0,0,.5);
+        border-right:1px solid rgba(233,181,72,.25);
+        display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .spine-title{writing-mode:vertical-rl;color:var(--gold2);font-size:.62rem;font-weight:700;
+        letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
+  .book-front{position:absolute;inset:0;border-radius:4px 14px 14px 4px;overflow:hidden;
+        border:1px solid rgba(255,255,255,.18);
+        box-shadow:0 24px 50px rgba(0,0,0,.5);animation:floaty 6s ease-in-out infinite}
   .book:hover .book-front{box-shadow:0 36px 80px rgba(0,0,0,.6),0 0 0 1px rgba(233,181,72,.4)}
   .book-front img{width:100%;height:100%;object-fit:cover;display:block}
   .book .tag{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(0,0,0,.55);
@@ -224,7 +229,7 @@
     </div>
     <div class="book" id="coverCard" aria-label="Sungai Tanaki book cover">
       <div class="book-pages"></div>
-      <div class="book-spine"></div>
+      <div class="book-spine"><span class="spine-title">Sungai Tanaki</span></div>
       <div class="book-front">
         <img id="coverImg" src="assets/pages/cover.jpg" alt="Sungai Tanaki cover" onerror="this.src='assets/pages/page1.jpg'"/>
         <div class="tag" data-i18n="coverTag">WebAR · 3 Bahasa · 12 Halaman</div>
@@ -267,12 +272,14 @@
   <footer class="reveal" data-i18n="footer"></footer>
 </div>
 
-<script src="config.js?v=21"></script>
+<script src="config.js?v=22"></script>
 <script>
   const params = new URLSearchParams(location.search);
+  const HOME_CODES = ["en", "bm"];
   let lang = params.get("lang") || localStorage.getItem("lang") || "en";
-  if (!CONFIG.languages.some(l => l.code === lang)) lang = "en";
+  if (!HOME_CODES.includes(lang)) lang = "en";
   const T = CONFIG.ui[lang] || CONFIG.ui.en;
+  const HOME_LANGS = CONFIG.languages.filter(l => HOME_CODES.includes(l.code));
 
   document.documentElement.lang = lang;
   document.title = CONFIG.bookTitle + " · AR";
@@ -288,11 +295,11 @@
 
   document.getElementById("statPages").textContent = CONFIG.pages.length;
   document.getElementById("statLive").textContent = CONFIG.targetMap.length;
-  document.getElementById("statLangs").textContent = CONFIG.languages.length;
+  document.getElementById("statLangs").textContent = HOME_LANGS.length;
 
   // 语言按钮（大按钮一行）
   const row = document.getElementById("langRow");
-  CONFIG.languages.forEach(L => {
+  HOME_LANGS.forEach(L => {
     const b = document.createElement("button");
     b.className = "lang" + (L.code === lang ? " active" : "");
     b.textContent = L.native;
@@ -302,7 +309,7 @@
 
   // 顶栏迷你语言切换
   const mini = document.getElementById("miniLang");
-  CONFIG.languages.forEach(L => {
+  HOME_LANGS.forEach(L => {
     const b = document.createElement("button");
     b.className = L.code === lang ? "on" : "";
     b.textContent = L.label;

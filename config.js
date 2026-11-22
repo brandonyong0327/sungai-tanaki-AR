@@ -50,7 +50,7 @@ const CONFIG = {
 CONFIG.ui = {
   en: {
     badge: "Augmented Reality Storybook",
-    coverTag: "3 Languages · 12 Pages",
+    coverTag: "2 Languages · 12 Pages",
     sub: "Point your phone at the book and watch each page come alive in 3D.",
     start: "Start scanning",
     view: "No book? View in 3D",
@@ -119,7 +119,7 @@ CONFIG.ui = {
   },
   bm: {
     badge: "Buku Cerita Realiti Terimbuh",
-    coverTag: "3 Bahasa · 12 Halaman",
+    coverTag: "2 Bahasa · 12 Halaman",
     sub: "Halakan telefon anda pada buku dan lihat setiap halaman hidup dalam 3D.",
     start: "Mula mengimbas",
     view: "Tiada buku? Lihat dalam 3D",
