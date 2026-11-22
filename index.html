@@ -106,6 +106,21 @@
   .about-text .drop::first-letter{font-family:Georgia,serif;font-weight:800;font-size:2.7em;float:left;line-height:.82;
         color:var(--gold);padding:4px 10px 0 0}
 
+  /* 锚点定位偏移（避开吸顶导航） */
+  #about,#steps,#langs,#grid,#faq{scroll-margin-top:76px}
+
+  /* ---------- FAQ ---------- */
+  .faq{display:flex;flex-direction:column;gap:10px;margin-top:14px;max-width:760px}
+  .faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 16px;
+        transition:border-color .25s}
+  .faq details[open]{border-color:rgba(233,181,72,.4)}
+  .faq summary{cursor:pointer;font-weight:700;padding:15px 4px;list-style:none;display:flex;
+        justify-content:space-between;align-items:center;gap:10px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";color:var(--gold);font-size:1.3rem;font-weight:800;flex:none}
+  .faq details[open] summary::after{content:"–"}
+  .faq details p{color:var(--muted);padding:0 4px 15px;font-size:.96rem}
+
   .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:14px}
   .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
         transition:transform .25s,border-color .25s}
@@ -170,9 +185,10 @@
   <a class="brand" href="index.html"><span class="mark">✦</span> Sungai Tanaki</a>
   <div class="nav-links">
     <a href="#about" data-i18n="aboutNav">Story</a>
-    <a href="#steps" data-i18n="navHelp">Help</a>
-    <a href="#langs" data-i18n="navLangs">Languages</a>
-    <a href="#grid" data-i18n="navPages">Pages</a>
+    <a href="#steps" data-i18n="navHelp">How it works</a>
+    <a href="#langs" data-i18n="navLangs">Language</a>
+    <a href="#grid" data-i18n="navPages">Page</a>
+    <a href="#faq" data-i18n="navFaq">FAQ</a>
   </div>
   <div class="nav-right">
     <div class="mini-lang" id="miniLang"></div>
@@ -232,10 +248,13 @@
   <p class="lead reveal" data-i18n="gridSub"></p>
   <div class="grid reveal" id="pageGrid"></div>
 
+  <h2 id="faq" class="reveal" data-i18n="faqTitle">Frequently asked questions</h2>
+  <div class="faq reveal" id="faqList"></div>
+
   <footer class="reveal" data-i18n="footer"></footer>
 </div>
 
-<script src="config.js?v=20"></script>
+<script src="config.js?v=21"></script>
 <script>
   const params = new URLSearchParams(location.search);
   let lang = params.get("lang") || localStorage.getItem("lang") || "en";
@@ -291,6 +310,14 @@
     d.className = "char";
     d.innerHTML = `<b>${c.name}</b><p>${c.role}</p>`;
     charRow.appendChild(d);
+  });
+
+  // FAQ 手风琴
+  const faqList = document.getElementById("faqList");
+  (T.faqItems || []).forEach(f => {
+    const d = document.createElement("details");
+    d.innerHTML = `<summary>${f.q}</summary><p>${f.a}</p>`;
+    faqList.appendChild(d);
   });
 
   const grid = document.getElementById("pageGrid");
