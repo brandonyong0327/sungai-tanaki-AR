@@ -168,11 +168,11 @@
   @media(max-width:720px){.lang-cards{grid-template-columns:1fr}}
   .lang-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
         display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-  .lang-card .badge{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
-        font-weight:800;font-size:.9rem;color:#2a1a05;flex:none;margin:0}
+  .lang-card .badge{min-width:46px;height:44px;padding:0 12px;border-radius:12px;display:grid;place-items:center;
+        font-weight:800;font-size:.85rem;letter-spacing:.04em;white-space:nowrap;color:#2a1a05;flex:none;margin:0}
   .lang-card[data-code="en"] .badge{background:var(--gold)}
   .lang-card[data-code="bm"] .badge{background:var(--orange)}
-  .lang-card[data-code="dsn"] .badge{background:#9a6a33}
+  .lang-card[data-code="dsn"] .badge{background:#9a6a33;color:var(--cream)}
   .lang-card h3{font-family:Georgia,serif;font-size:1.15rem;color:var(--cream)}
   .lang-card .desc{color:var(--muted);font-size:.92rem;line-height:1.5;flex:1}
   .sample-row{display:flex;align-items:center;gap:10px;width:100%}
