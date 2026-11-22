@@ -6,50 +6,88 @@
 <title id="title">Sungai Tanaki · AR</title>
 <style>
   :root{
-    --bg:#0f1b2d; --bg2:#16263f; --card:#1e3354;
-    --text:#eaf2ff; --muted:#a9c2e2; --accent:#5fd4e6; --accent2:#ffd166;
+    --bg:#0e2318; --bg2:#15301f; --card:#1c3a28; --card2:#224630;
+    --line:#33593d; --gold:#e9b548; --gold2:#f6cf76; --cream:#f4ecdc;
+    --muted:#a9c0a4; --orange:#ee9a35; --orange2:#e5842a;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{font-size:17px}
-  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);
-       line-height:1.6;font-size:1rem}
-  .wrap{max-width:980px;margin:0 auto;padding:20px 18px 56px}
-  .hero{text-align:center;padding:26px 0 10px}
-  .badge{display:inline-block;background:var(--card);color:var(--accent);padding:7px 16px;border-radius:999px;
-         font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
-  h1{font-size:clamp(34px,9vw,60px);margin:16px 0 8px;line-height:1.08}
-  h1 em{color:var(--accent);font-style:normal}
-  .sub{color:var(--muted);font-size:1.05rem;max-width:620px;margin:0 auto}
+  html{font-size:17px;scroll-behavior:smooth}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--cream);
+       line-height:1.6;font-size:1rem;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(900px 500px at 78% 12%, rgba(233,181,72,.10), transparent 60%),
+      radial-gradient(700px 500px at 10% 85%, rgba(46,110,74,.35), transparent 60%),
+      linear-gradient(180deg,var(--bg),var(--bg2));}
 
-  .actions{margin-top:22px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-  .btn{display:inline-block;padding:15px 26px;border-radius:14px;text-decoration:none;font-weight:700;
-       border:0;cursor:pointer;font-size:1.05rem}
-  .btn-primary{background:var(--accent);color:#08222c}
-  .btn-ghost{background:transparent;color:var(--text);border:1px solid #3a5a8a}
+  /* ---------- top nav ---------- */
+  .nav{max-width:1080px;margin:0 auto;padding:18px 20px;display:flex;align-items:center;
+       justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.14em;
+         text-transform:uppercase;color:var(--cream);text-decoration:none;font-size:1.02rem}
+  .brand .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--gold),var(--orange2));
+         display:flex;align-items:center;justify-content:center;color:#2a1a05;font-size:1rem}
+  .nav-links{display:flex;gap:20px;color:var(--muted);font-size:.92rem}
+  .nav-links a{color:inherit;text-decoration:none}
+  .nav-right{display:flex;gap:10px;align-items:center}
+  .mini-lang{display:flex;background:rgba(255,255,255,.07);border-radius:999px;padding:3px}
+  .mini-lang button{background:transparent;border:0;color:var(--muted);font-weight:700;
+        padding:7px 14px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:.9rem}
+  .mini-lang button.on{background:var(--orange);color:#2a1a05}
+  .nav-cta{background:var(--orange);color:#2a1a05;border:0;border-radius:999px;padding:9px 18px;
+        font-weight:800;cursor:pointer;font-family:inherit;font-size:.92rem;text-decoration:none}
 
-  .stats{display:flex;gap:26px;justify-content:center;margin-top:26px;flex-wrap:wrap;color:var(--muted);font-size:.95rem}
-  .stats b{display:block;color:var(--text);font-size:1.6rem;line-height:1.2}
+  .wrap{max-width:1080px;margin:0 auto;padding:10px 20px 56px}
 
-  h2{font-size:clamp(22px,5.6vw,28px);margin:44px 0 6px}
+  /* ---------- hero ---------- */
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:34px;align-items:center;padding:26px 0 20px}
+  .badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(233,181,72,.45);
+         color:var(--gold2);padding:8px 16px;border-radius:999px;font-size:.8rem;
+         letter-spacing:.12em;text-transform:uppercase;margin-bottom:18px}
+  h1{font-family:Georgia,"Times New Roman",serif;font-weight:800;font-size:clamp(38px,7vw,64px);
+     line-height:1.05;letter-spacing:.01em;margin-bottom:14px}
+  h1 .accent{color:var(--gold);font-style:italic;display:block}
+  .sub{color:var(--muted);font-size:1.05rem;max-width:560px}
+
+  .actions{margin-top:26px;display:flex;gap:14px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:14px;
+       text-decoration:none;font-weight:700;border:0;cursor:pointer;font-size:1.02rem;font-family:inherit}
+  .btn-primary{background:linear-gradient(135deg,var(--gold),var(--orange2));color:#2a1a05;
+       box-shadow:0 12px 28px rgba(229,132,42,.32)}
+  .btn-ghost{background:rgba(255,255,255,.06);color:var(--cream);border:1px solid rgba(255,255,255,.18)}
+
+  /* cover card */
+  .cover{position:relative;justify-self:center;width:min(300px,78vw)}
+  .cover .frame{aspect-ratio:3/4;border-radius:20px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.5);
+       border:1px solid rgba(233,181,72,.25)}
+  .cover img{width:100%;height:100%;object-fit:cover;display:block}
+  .cover .tag{position:absolute;left:10px;right:10px;bottom:12px;background:rgba(0,0,0,.55);
+       backdrop-filter:blur(6px);border-radius:999px;padding:8px 14px;text-align:center;
+       font-size:.82rem;color:var(--cream)}
+
+  .stats{display:flex;gap:34px;justify-content:center;margin-top:34px;flex-wrap:wrap;color:var(--muted);font-size:.95rem}
+  .stats b{display:block;color:var(--cream);font-size:1.7rem;font-family:Georgia,serif}
+
+  h2{font-family:Georgia,serif;font-size:clamp(23px,5.5vw,30px);color:var(--cream);margin:48px 0 6px}
   .lead{color:var(--muted);font-size:1rem;margin-bottom:14px}
 
   .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:14px}
-  .step{background:var(--card);border-radius:16px;padding:18px}
-  .step .n{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#08222c;
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .step .n{width:36px;height:36px;border-radius:50%;background:var(--gold);color:#2a1a05;
            display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;margin-bottom:10px}
   .step b{font-size:1.05rem}
   .step p{color:var(--muted);margin-top:6px;font-size:.98rem}
 
-  .langs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
-  .lang{padding:12px 20px;border-radius:12px;background:var(--card);color:var(--text);
-        border:1px solid transparent;font-weight:700;cursor:pointer;font-size:1rem;font-family:inherit}
-  .lang.active{border-color:var(--accent);color:var(--accent)}
+  .langs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+  .lang{padding:12px 20px;border-radius:12px;background:var(--card);border:1px solid var(--line);
+        color:var(--cream);font-weight:700;cursor:pointer;font-size:1rem;font-family:inherit}
+  .lang.active{background:var(--orange);border-color:var(--orange);color:#2a1a05}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:16px}
-  .cell{background:var(--card);border-radius:14px;overflow:hidden;text-decoration:none;color:var(--text);
-        display:block;aspect-ratio:3/4;position:relative}
+  .cell{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+        text-decoration:none;color:var(--cream);display:block;aspect-ratio:3/4;position:relative}
   .cell .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-            font-size:2.6rem;font-weight:700;color:#4f74a8}
+            font-size:2.6rem;font-weight:700;color:#4f7458}
   .cell img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
   .cell span{position:absolute;left:6px;right:6px;bottom:6px;background:rgba(0,0,0,.68);padding:6px 10px;
              border-radius:999px;font-size:.9rem;font-weight:600;text-align:center;
@@ -57,45 +95,69 @@
 
   footer{margin-top:52px;color:var(--muted);font-size:.9rem;text-align:center;line-height:1.7}
 
-  @media (max-width:640px){
+  @media (max-width:760px){
     html{font-size:18px}
+    .nav-links{display:none}
+    .hero{grid-template-columns:1fr;gap:22px;text-align:center}
+    .cover{order:-1;width:min(240px,70vw)}
+    .badge{margin:0 auto 16px}
+    .sub{margin:0 auto}
+    .actions{justify-content:center;flex-direction:column;align-items:stretch}
+    .btn{justify-content:center}
     .steps{grid-template-columns:1fr}
     .grid{grid-template-columns:repeat(2,1fr);gap:10px}
-    .actions{flex-direction:column;align-items:stretch}
-    .btn{text-align:center}
   }
 </style>
 </head>
 <body>
-<div class="wrap">
 
+<nav class="nav">
+  <a class="brand" href="index.html"><span class="mark">✦</span> Sungai Tanaki</a>
+  <div class="nav-links">
+    <a href="#grid" data-i18n="gridTitle">Pages</a>
+    <a href="#langs" data-i18n="pickLang">Language</a>
+    <a href="#steps" data-i18n="howTitle">Help</a>
+  </div>
+  <div class="nav-right">
+    <div class="mini-lang" id="miniLang"></div>
+    <a class="nav-cta" href="ar.html" data-i18n="start">Imbas AR</a>
+  </div>
+</nav>
+
+<div class="wrap">
   <div class="hero">
-    <span class="badge" data-i18n="badge">Augmented Reality Storybook</span>
-    <h1 id="bookTitle">Sungai Tanaki</h1>
-    <p class="sub" id="bookSub" data-i18n="sub"></p>
-    <div class="actions">
-      <a class="btn btn-primary" id="startBtn" href="ar.html" data-i18n="start">Start scanning</a>
-      <a class="btn btn-ghost" id="viewBtn" href="viewer.html?page=1" data-i18n="view">No book? View in 3D</a>
+    <div>
+      <span class="badge" data-i18n="badge">Augmented Reality Storybook</span>
+      <h1><span id="bookTitle">Sungai Tanaki</span><span class="accent" id="bookAccent">AR</span></h1>
+      <p class="sub" id="bookSub" data-i18n="sub"></p>
+      <div class="actions">
+        <a class="btn btn-primary" id="startBtn" href="ar.html" data-i18n="start">Start scanning</a>
+        <a class="btn btn-ghost" id="viewBtn" href="viewer.html?page=1" data-i18n="view">No book? View in 3D</a>
+      </div>
+      <div class="stats">
+        <div><b id="statPages">0</b> <span data-i18n="statPages">story pages</span></div>
+        <div><b id="statLive">0</b> <span data-i18n="statLive">AR pages live</span></div>
+        <div><b id="statLangs">0</b> <span data-i18n="statLangs">narration languages</span></div>
+      </div>
     </div>
-    <div class="stats">
-      <div><b id="statPages">0</b> <span data-i18n="statPages">story pages</span></div>
-      <div><b id="statLive">0</b> <span data-i18n="statLive">AR pages live</span></div>
-      <div><b id="statLangs">0</b> <span data-i18n="statLangs">narration languages</span></div>
+    <div class="cover">
+      <div class="frame"><img id="coverImg" src="assets/pages/page1.jpg" alt="cover" onerror="this.remove()"/></div>
+      <div class="tag" data-i18n="coverTag">WebAR · 3 Bahasa · 12 Halaman</div>
     </div>
   </div>
 
-  <h2 data-i18n="pickLang">Pick a language</h2>
+  <h2 id="langs" data-i18n="pickLang">Pick a language</h2>
   <p class="lead" data-i18n="pickLangSub"></p>
   <div class="langs" id="langRow"></div>
 
-  <h2 data-i18n="howTitle">How it works</h2>
+  <h2 id="steps" data-i18n="howTitle">How it works</h2>
   <div class="steps">
     <div class="step"><div class="n">1</div><b data-i18n="s1t"></b><p data-i18n="s1b"></p></div>
     <div class="step"><div class="n">2</div><b data-i18n="s2t"></b><p data-i18n="s2b"></p></div>
     <div class="step"><div class="n">3</div><b data-i18n="s3t"></b><p data-i18n="s3b"></p></div>
   </div>
 
-  <h2 data-i18n="gridTitle">Every page, a small world</h2>
+  <h2 id="grid" data-i18n="gridTitle">Every page, a small world</h2>
   <p class="lead" data-i18n="gridSub"></p>
   <div class="grid" id="grid"></div>
 
@@ -107,14 +169,15 @@
   const params = new URLSearchParams(location.search);
   let lang = params.get("lang") || localStorage.getItem("lang") || "en";
   if (!CONFIG.languages.some(l => l.code === lang)) lang = "en";
-
   const T = CONFIG.ui[lang] || CONFIG.ui.en;
 
   document.documentElement.lang = lang;
   document.title = CONFIG.bookTitle + " · AR";
-  document.getElementById("bookTitle").innerHTML = CONFIG.bookTitle.replace(" ", " <em>") + "</em>";
 
-  // 所有带 data-i18n 的元素一次填好
+  const titleParts = CONFIG.bookTitle.split(" ");
+  document.getElementById("bookTitle").textContent = titleParts.slice(0, -1).join(" ") || CONFIG.bookTitle;
+  document.getElementById("bookAccent").textContent = titleParts[titleParts.length - 1];
+
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const v = T[el.dataset.i18n];
     if (v) el.textContent = v;
@@ -124,17 +187,24 @@
   document.getElementById("statLive").textContent = CONFIG.targetMap.length;
   document.getElementById("statLangs").textContent = CONFIG.languages.length;
 
-  // 语言按钮：用该语言自己的名字
+  // 语言按钮（大按钮一行）
   const row = document.getElementById("langRow");
   CONFIG.languages.forEach(L => {
     const b = document.createElement("button");
     b.className = "lang" + (L.code === lang ? " active" : "");
-    b.textContent = L.label + " · " + L.native;
-    b.onclick = () => {
-      localStorage.setItem("lang", L.code);
-      location.href = "index.html?lang=" + L.code;
-    };
+    b.textContent = L.native;
+    b.onclick = () => { localStorage.setItem("lang", L.code); location.href = "index.html?lang=" + L.code; };
     row.appendChild(b);
+  });
+
+  // 顶栏迷你语言切换
+  const mini = document.getElementById("miniLang");
+  CONFIG.languages.forEach(L => {
+    const b = document.createElement("button");
+    b.className = L.code === lang ? "on" : "";
+    b.textContent = L.label;
+    b.onclick = () => { localStorage.setItem("lang", L.code); location.href = "index.html?lang=" + L.code; };
+    mini.appendChild(b);
   });
 
   document.getElementById("startBtn").href = "ar.html?lang=" + lang;
@@ -151,7 +221,7 @@
     const label = T.pageWord + " " + num;
     a.innerHTML = `<div class="ph">${num}</div>
         <img src="${p.thumb}" alt="${label}" onerror="this.remove()"/>
-        <span>${live.includes(num) ? "📷 " : ""}${num}. ${label}</span>`;
+        <span>${live.includes(num) ? "📷 " : ""}${label}</span>`;
     grid.appendChild(a);
   });
 </script>

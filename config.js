@@ -50,6 +50,7 @@ const CONFIG = {
 CONFIG.ui = {
   en: {
     badge: "Augmented Reality Storybook",
+    coverTag: "WebAR · 3 Languages · 12 Pages",
     sub: "Point your phone at the book and watch each page come alive in 3D.",
     start: "Start scanning",
     view: "No book? View in 3D",
@@ -86,6 +87,7 @@ CONFIG.ui = {
   },
   bm: {
     badge: "Buku Cerita Realiti Terimbuh",
+    coverTag: "WebAR · 3 Bahasa · 12 Halaman",
     sub: "Halakan telefon anda pada buku dan lihat setiap halaman hidup dalam 3D.",
     start: "Mula mengimbas",
     view: "Tiada buku? Lihat dalam 3D",
@@ -122,6 +124,7 @@ CONFIG.ui = {
   },
   dsn: {
     badge: "Tupus Sorita AR",
+    coverTag: "WebAR · 3 Boros · 12 Kayatan",
     sub: "Tuduk kamera nu id tupus om intong sanjompi kayatan mokouhab id 3D.",
     start: "Momulai Minsimbau",
     view: "Aiso tupus? Intong id 3D",

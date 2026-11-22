@@ -7,8 +7,9 @@
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <style>
+  :root{--gold:#e9b548;--orange:#ee9a35;--orange2:#e5842a;--cream:#f4ecdc;--muted:#a9c0a4;}
   html,body{margin:0;height:100%;width:100%;background:#000;overflow:hidden;font-family:system-ui,sans-serif;
-            color:#fff;position:fixed;inset:0;overscroll-behavior:none;font-size:17px}
+            color:#fff;position:fixed;inset:0;overscroll-behavior:none;font-size:18px}
   /* 相机画面强制铺满全屏（安卓竖屏常见「只剩一条细条」就是这里） */
   video{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;
         object-fit:cover!important;object-position:center!important;z-index:-2!important;background:#000}
@@ -18,18 +19,19 @@
   #hud{position:fixed;left:0;right:0;top:0;padding:12px;display:flex;justify-content:space-between;
        align-items:center;z-index:6;pointer-events:none;gap:8px}
   #hud > *{pointer-events:auto}
-  .pill{color:#fff;text-decoration:none;background:rgba(0,0,0,.55);padding:11px 16px;border-radius:999px;
-        font-size:1rem;font-weight:600;border:0;font-family:inherit;cursor:pointer}
+  .pill{color:var(--cream);text-decoration:none;background:rgba(14,35,24,.72);padding:11px 16px;border-radius:999px;
+        font-size:1rem;font-weight:600;border:1px solid rgba(233,181,72,.3);font-family:inherit;cursor:pointer;
+        backdrop-filter:blur(6px)}
   #langbar{display:flex;gap:6px}
-  #langbar button{opacity:.6;min-width:52px;text-align:center}
-  #langbar button.on{opacity:1;background:#5fd4e6;color:#08222c;font-weight:800}
+  #langbar button{opacity:.65;min-width:56px;text-align:center}
+  #langbar button.on{opacity:1;background:linear-gradient(135deg,var(--gold),var(--orange2));color:#2a1a05;font-weight:800;border-color:transparent}
 
   #tip{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);max-width:94vw;text-align:center;
-       background:rgba(0,0,0,.68);padding:13px 22px;border-radius:999px;font-size:1.02rem;z-index:6;
-       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+       background:rgba(14,35,24,.78);padding:13px 22px;border-radius:999px;font-size:1.05rem;z-index:6;
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid rgba(233,181,72,.25)}
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:30px;
-       background:#0f1b2d;z-index:9;text-align:center;line-height:1.7;font-size:1.05rem}
-  #err h3{font-size:1.3rem;margin-bottom:12px}
+       background:#0e2318;z-index:9;text-align:center;line-height:1.7;font-size:1.1rem;color:var(--cream)}
+  #err h3{font-size:1.35rem;margin-bottom:12px;color:var(--gold2)}
   #dbg{position:fixed;left:8px;bottom:72px;z-index:7;font:12px/1.5 ui-monospace,monospace;
        background:rgba(0,0,0,.65);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
 </style>
