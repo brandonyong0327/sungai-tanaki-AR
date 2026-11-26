@@ -437,11 +437,23 @@
       el.addEventListener("targetLost", () => onLost(i));
     }
 
-    // 调试三轴标尺：anchor0 上画 X(红) / Y(绿) / Z(蓝) 三根 1 单位长的实心条 + 中心小方块，
-    // 用来确认 mindar 的坐标系朝向和 1 单位到底多大
+    // 调试探针：
+    //  A) 相机正前方 0.3 单位的红方块（纯世界坐标，验证 3D 是否画在视频上面）
+    //  B) anchor0 原点处 0.3 单位的青方块（验证锚点原点在哪）
+    //  C) anchor0 上 X(红)/Y(绿)/Z(蓝) 三根 1 单位长的实心条（看坐标朝向和 1 单位多大）
     if (params.get("debug") === "1") {
+      const camBox = document.createElement("a-box");
+      camBox.setAttribute("color", "#ff0000");
+      camBox.setAttribute("width", "200"); camBox.setAttribute("height", "200"); camBox.setAttribute("depth", "5");
+      camBox.setAttribute("position", "0 0 -2000");
+      sceneEl.appendChild(camBox);
+
       const a0 = $("anchor0");
       if (a0) {
+        const org = document.createElement("a-box");
+        org.setAttribute("color", "#00ffff");
+        org.setAttribute("width", "0.3"); org.setAttribute("height", "0.3"); org.setAttribute("depth", "0.3");
+        a0.appendChild(org);
         function bar(color, w, h, d, x, y, z) {
           const b = document.createElement("a-box");
           b.setAttribute("color", color);
@@ -588,7 +600,9 @@
                  "  page=" + (size.x / aw.x).toFixed(2) + "x";
           out += "\nd " + d.toFixed(2) + " ndc " + c.x.toFixed(2) + " " + c.y.toFixed(2) + " " + c.z.toFixed(2);
           out += "\nanc " + aw.x.toFixed(2) + " " + aw.y.toFixed(2) + " " + aw.z.toFixed(2) +
-                 "  cam " + cam.position.x.toFixed(2) + " " + cam.position.y.toFixed(2) + " " + cam.position.z.toFixed(2);
+                 "  apos " + ap.x.toFixed(1) + " " + ap.y.toFixed(1) + " " + ap.z.toFixed(1);
+          out += "\ncam " + cam.position.x.toFixed(1) + " " + cam.position.y.toFixed(1) + " " + cam.position.z.toFixed(1) +
+                 " fov " + cam.fov.toFixed(1) + " near " + cam.near.toFixed(2) + " far " + cam.far.toFixed(0);
         } catch (e) { out += "\nerr " + e.message; }
       }
       dbgEl.textContent = out;
