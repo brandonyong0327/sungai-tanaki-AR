@@ -291,7 +291,7 @@
   // ---------- 模型：固定在相机正前方（永远居中、完全不受追踪抖动影响） ----------
   let displayRoot = null, pivot = null, currentModel = null, shownPage = 0;
   // 手势状态：az 水平角、el 俯仰角、zoom 缩放倍数
-  let az = 0, elv = 12, zoom = 1, lastTouch = 0;
+  let az = 0, elv = 0, zoom = 1, lastTouch = 0;
   const ZOOM_MIN = 0.45, ZOOM_MAX = 3.0;
 
   function applyPivot() {
@@ -528,8 +528,8 @@
       const cur = { x: e.clientX, y: e.clientY };
       if (pts.size === 1) {
         az += (cur.x - prev.x) * 0.32;      // 手指往右划 → 模型往右转
-        elv += (cur.y - prev.y) * 0.22;
-        elv = Math.max(-75, Math.min(75, elv));
+        elv -= (cur.y - prev.y) * 0.22;     // 手指往上划 → 俯视看顶部
+        elv = Math.max(-10, Math.min(85, elv));
         pts.set(e.pointerId, cur);
         applyPivot();
       } else {
@@ -617,7 +617,7 @@
   };
   $("replayBtn").onclick = () => { if (activePage) playNarration(activePage); };
   $("resetBtn").onclick = () => {
-    az = 0; elv = 12; zoom = 1;
+    az = 0; elv = 0; zoom = 1;
     if (currentModel) fitToScreen(currentModel);
     applyPivot();
   };
