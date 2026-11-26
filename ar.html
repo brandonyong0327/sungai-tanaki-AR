@@ -420,14 +420,14 @@
     activePage = null;
     audio.pause(); audio.currentTime = 0;
     showBadge(null); setModelLoading(false);
-    // 书页离开镜头 1.2 秒后收起模型（短暂丢帧不会闪）
+    // 书页离开镜头 0.5 秒后收起模型（短暂丢帧不会闪）
     clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       if (activePage) return;
       showDisplay(false);
       setScanHint(true);
       $("controls").classList.add("off");
-    }, 1200);
+    }, 500);
   }
 
   // ---------- 相机画面尺寸修正 ----------
@@ -527,7 +527,7 @@
       if (!prev) return;
       const cur = { x: e.clientX, y: e.clientY };
       if (pts.size === 1) {
-        az -= (cur.x - prev.x) * 0.32;
+        az += (cur.x - prev.x) * 0.32;      // 手指往右划 → 模型往右转
         elv += (cur.y - prev.y) * 0.22;
         elv = Math.max(-75, Math.min(75, elv));
         pts.set(e.pointerId, cur);
