@@ -33,7 +33,7 @@ const CONFIG = {
       page:  n,
       title: "Page " + n,
       thumb: `assets/pages/page${n}.jpg`,
-      model: `assets/models/page${n}.glb?v=3`,
+      model: `assets/models/page${n}.glb?v=4`,
       audio: {
         en:  `assets/audio/en/page${n}.mp3`,
         bm:  `assets/audio/bm/page${n}.mp3`,
