@@ -399,6 +399,28 @@
       el.addEventListener("targetLost", () => onLost(i));
     }
 
+    // 调试标尺：anchor0 上画一个 1×1 单位的绿方块 + 一根 1 单位的竖线，
+    // 用来跟书页比对，确认 mindar 的 1 单位到底等于多大
+    if (params.get("debug") === "1") {
+      const a0 = $("anchor0");
+      if (a0) {
+        const sq = document.createElement("a-plane");
+        sq.setAttribute("color", "#00ff88");
+        sq.setAttribute("opacity", "0.30");
+        sq.setAttribute("width", "1");
+        sq.setAttribute("height", "1");
+        sq.setAttribute("position", "0 0 0.002");
+        a0.appendChild(sq);
+        const bar = document.createElement("a-box");
+        bar.setAttribute("color", "#ff3355");
+        bar.setAttribute("width", "0.02");
+        bar.setAttribute("height", "1");
+        bar.setAttribute("depth", "0.02");
+        bar.setAttribute("position", "-0.5 0.5 0.002");
+        a0.appendChild(bar);
+      }
+    }
+
     sceneEl.addEventListener("arReady", () => {
       arReadyFlag = true;
       const v = document.querySelector("video");
@@ -520,10 +542,28 @@
         "\nmodel " + (currentModel ? (function () {
           const o = currentModel.object3D;
           if (!o) return "no-obj";
-          const sc = o.scale, ps = o.parent ? o.parent.position : o.position;
-          return "s=" + sc.x.toFixed(4) + " p=" + ps.x.toFixed(2) + "," + ps.y.toFixed(2) + "," + ps.z.toFixed(2) +
-                 " anim=" + (currentModel.getAttribute("animation-mixer") ? "y" : "n");
-        })() : "-");
+          const sc = o.scale, mp = o.position;
+          return "s=" + sc.x.toFixed(4) + " p=" + mp.x.toFixed(2) + "," + mp.y.toFixed(2) + "," + mp.z.toFixed(2);
+        })() : "-") +
+        "\nbb    " + (function () {
+          if (!currentModel || !sceneEl || !sceneEl.camera) return "-";
+          try {
+            const box = new THREE.Box3().setFromObject(currentModel.object3D);
+            if (box.isEmpty()) return "empty";
+            const size = box.getSize(new THREE.Vector3());
+            const ctr = box.getCenter(new THREE.Vector3());
+            const cam = sceneEl.camera;
+            const dist = cam.position.distanceTo(ctr);
+            const c = ctr.clone().project(cam);
+            const a = ctr.clone().add(new THREE.Vector3(size.x / 2, 0, 0)).project(cam);
+            const b = ctr.clone().add(new THREE.Vector3(-size.x / 2, 0, 0)).project(cam);
+            const px = Math.round(Math.abs(a.x - b.x) * innerWidth / 2);
+            const py = Math.round(Math.abs(a.y - b.y) * innerHeight / 2);
+            return size.x.toFixed(1) + "×" + size.y.toFixed(1) + "×" + size.z.toFixed(1) +
+              " d=" + dist.toFixed(2) + " ndc=" + c.x.toFixed(2) + "," + c.y.toFixed(2) + "," + c.z.toFixed(2) +
+              " px=" + px + "x" + py;
+          } catch (e) { return "err " + e.message; }
+        })();
     }, 700);
   }
 
