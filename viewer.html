@@ -2,12 +2,13 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Sungai Tanaki · 3D</title>
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <style>
   :root{--gold:#e9b548;--gold2:#f6cf76;--orange:#ee9a35;--orange2:#e5842a;--cream:#f4ecdc;--muted:#a9c0a4;}
-  html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:var(--cream);font-size:18px}
+  html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:var(--cream);font-size:18px;
+            overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none}
   #bg{position:fixed;inset:0;background:radial-gradient(circle at 50% 26%,rgba(28,58,40,.9),rgba(14,35,24,.95) 70%);z-index:-1}
   #bg-art{position:fixed;inset:-12%;z-index:-2;background:url('assets/pages/cover.jpg') center/cover no-repeat;
           filter:blur(30px) saturate(1.15);opacity:.22;transform:scale(1.12)}
@@ -29,6 +30,8 @@
   #nav button:disabled{opacity:.3}
   #note{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;
         font-size:1.05rem;line-height:1.8;color:var(--muted);display:none;z-index:5;padding:0 24px}
+  a-scene{z-index:0}
+  .a-canvas{touch-action:none!important}
 </style>
 </head>
 <body>
@@ -51,19 +54,21 @@
     </div>
   </div>
 
-  <a-scene background="color:#14301f" renderer="colorManagement: true">
+  <a-scene id="scene" background="color:#14301f" renderer="colorManagement: true" vr-mode-ui="enabled: false">
     <a-light type="ambient" intensity="1.3"></a-light>
     <a-light type="directional" position="2 4 4" intensity="1.6"></a-light>
     <a-light type="directional" position="-3 2 -2" intensity="0.6"></a-light>
-    <a-entity id="turntable" animation="property: rotation; to: 0 360 0; loop: true; dur: 18000; easing: linear">
+    <a-entity id="turntable">
       <a-gltf-model id="model" position="0 0.24 0" scale="0.55 0.55 0.55"></a-gltf-model>
     </a-entity>
-    <a-camera position="0 0.35 1.6"></a-camera>
+    <a-camera id="cam" position="0 0.6 5" fov="50"
+              look-controls="enabled: false; magicWindowTrackingEnabled: false; touchEnabled: false; mouseEnabled: false"
+              wasd-controls-enabled="false"></a-camera>
   </a-scene>
 
   <audio id="narration" preload="auto" loop></audio>
 
-  <script src="config.js?v=25"></script>
+  <script src="config.js?v=26"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const total = CONFIG.pages.length;
@@ -107,12 +112,144 @@
       mixer = new THREE.AnimationMixer(obj);
       mixer.clipAction(obj.animations[Math.min(clipIndex, obj.animations.length - 1)]).play();
     }
-    // 动画驱动：rAF 更稳（a-scene tick 在部分机型上不触发）
+
+    /* ---------------- 镜头：固定机位 + 绕模型 orbit + 捏合缩放 ---------------- */
+    const camEl    = document.getElementById("cam");
+    const turntable = document.getElementById("turntable");
+    const orbit = { tx: 0, ty: 0.4, tz: 0, dist: 3.5, min: 1.2, max: 14, az: 0, el: 12 };
+    let camReady = false, userZoom = false;
+
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+    function applyCam() {
+      const az = orbit.az * Math.PI / 180, el = orbit.el * Math.PI / 180;
+      camEl.setAttribute("position", {
+        x: orbit.tx + orbit.dist * Math.sin(az) * Math.cos(el),
+        y: orbit.ty + orbit.dist * Math.sin(el),
+        z: orbit.tz + orbit.dist * Math.cos(az) * Math.cos(el)
+      });
+      camEl.setAttribute("rotation", { x: -orbit.el, y: orbit.az, z: 0 });
+    }
+
+    // 按包围盒的宽/高分别算所需距离，取更远的那个（横幅场景不会被缩得太小）
+    function fitCamera() {
+      const obj = modelEl.getObject3D("mesh");
+      const cam3 = camEl.getObject3D("camera");
+      if (!obj || !cam3) return;
+      sceneEl.object3D.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(obj);
+      if (box.isEmpty()) return;
+      const ctr = box.getCenter(new THREE.Vector3());
+      const halfW = Math.max(Math.abs(box.max.x - ctr.x), Math.abs(ctr.x - box.min.x));
+      const halfH = Math.max(Math.abs(box.max.y - ctr.y), Math.abs(ctr.y - box.min.y));
+      const halfD = Math.max(Math.abs(box.max.z - ctr.z), Math.abs(ctr.z - box.min.z));
+      orbit.tx = ctr.x; orbit.ty = ctr.y - halfH * 0.10; orbit.tz = ctr.z;
+
+      const vfov = ((cam3.fov || 50) * Math.PI) / 180;
+      const aspect = window.innerWidth / window.innerHeight;
+      const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+      const dW = halfW / Math.tan(hfov / 2);
+      const dH = halfH / Math.tan(vfov / 2);
+      const d = Math.max(dW, dH) + halfD * 0.9;
+      const final = d * 1.18;
+
+      orbit.dist = final;
+      orbit.min = final * 0.35;
+      orbit.max = final * 2.6;
+      if (!userZoom) { orbit.az = 0; orbit.el = 18; }
+      camReady = true;
+      applyCam();
+    }
+
+    /* ---------------- 手势 ---------------- */
+    const IDLE_MS = 7000;
+    let autoRot = true, lastInteract = performance.now();
+    const pointers = new Map();
+    let pinchPrev = 0;
+
+    function markInteract() { lastInteract = performance.now(); autoRot = false; }
+
+    // 命中 UI 时不接管手势
+    function onUI(e) {
+      const t = e.target;
+      if (!t || !t.closest) return false;
+      return !!t.closest("#hud, #info, #nav, #note, .pill, button");
+    }
+    function pinchDist() {
+      const v = [...pointers.values()];
+      if (v.length < 2) return 0;
+      return Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y);
+    }
+
+    function onDown(e) {
+      if (onUI(e)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      markInteract();
+      if (pointers.size === 2) pinchPrev = pinchDist();
+      if (e.cancelable) e.preventDefault();
+    }
+    function onMove(e) {
+      const p = pointers.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      markInteract();
+
+      if (pointers.size >= 2) {
+        const d = pinchDist();
+        if (pinchPrev > 0 && d > 0 && Math.abs(d - pinchPrev) > 0.5) {
+          orbit.dist = clamp(orbit.dist * (pinchPrev / d), orbit.min, orbit.max);
+          pinchPrev = d;
+          userZoom = true;
+          if (camReady) applyCam();
+        }
+      } else {
+        orbit.az += dx * 0.35;
+        orbit.el = clamp(orbit.el + dy * 0.35, -6, 70);
+        if (camReady) applyCam();
+      }
+      if (e.cancelable) e.preventDefault();
+    }
+    function onUp(e) {
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) pinchPrev = 0;
+      lastInteract = performance.now();
+    }
+
+    document.addEventListener("pointerdown", onDown, { passive: false });
+    document.addEventListener("pointermove", onMove, { passive: false });
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+    document.addEventListener("wheel", (e) => {
+      if (onUI(e)) return;
+      e.preventDefault();
+      markInteract();
+      orbit.dist = clamp(orbit.dist * (1 + e.deltaY * 0.0015), orbit.min, orbit.max);
+      userZoom = true;
+      if (camReady) applyCam();
+    }, { passive: false });
+
+    /* ---------------- 每帧：动画 + 自转 ---------------- */
+    const DBG = params.get("debug") === "1";
+    let dbgLast = 0;
     let lastTick = performance.now();
     function animLoop(now) {
       const dt = Math.min((now - lastTick) / 1000, 0.12);
       lastTick = now;
       if (mixer) mixer.update(dt);
+
+      // 闲置 7 秒恢复自转
+      if (!autoRot && now - lastInteract > IDLE_MS) autoRot = true;
+      if (autoRot) turntable.object3D.rotation.y += 0.35 * dt;
+
+      if (DBG && now - dbgLast > 250) {
+        dbgLast = now;
+        document.body.setAttribute("data-dbg",
+          "rotY=" + turntable.object3D.rotation.y.toFixed(3) +
+          " az=" + orbit.az.toFixed(1) + " el=" + orbit.el.toFixed(1) +
+          " dist=" + orbit.dist.toFixed(2) + " auto=" + (autoRot ? 1 : 0) +
+          " zoom=" + (userZoom ? 1 : 0));
+      }
       requestAnimationFrame(animLoop);
     }
     requestAnimationFrame(animLoop);
@@ -132,32 +269,8 @@
       startAnim();
     });
 
-    // 竖屏 / 横屏都自动把模型框进画面
-    function fitCamera(){
-      const obj = modelEl.getObject3D("mesh");
-      const camEl = document.querySelector("a-camera");
-      const cam3 = camEl.getObject3D("camera");
-      if (!obj || !cam3) return;
-      sceneEl.object3D.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(obj);
-      if (box.isEmpty()) return;
-      const ctr  = box.getCenter(new THREE.Vector3());
-      const vfov = cam3.fov * Math.PI / 180;
-      const hfov = 2 * Math.atan(Math.tan(vfov / 2) * cam3.aspect);
-      const th = Math.tan(hfov / 2), tv = Math.tan(vfov / 2);
-      let dist = 0;
-      [box.min.x, box.max.x].forEach(x => {
-        [box.min.y, box.max.y].forEach(y => {
-          [box.min.z, box.max.z].forEach(z => {
-            const need = Math.max(z + Math.abs(x) / th, z + Math.abs(y - ctr.y) / tv);
-            if (need > dist) dist = need;
-          });
-        });
-      });
-      camEl.setAttribute("position", { x: 0, y: ctr.y, z: dist * 1.1 });
-    }
     window.addEventListener("resize", () => setTimeout(fitCamera, 200));
-    window.addEventListener("orientationchange", () => setTimeout(fitCamera, 300));
+    window.addEventListener("orientationchange", () => setTimeout(() => { userZoom = false; fitCamera(); }, 300));
 
     let slowTimer = null;
     function render() {
@@ -167,6 +280,8 @@
       noteEl.innerHTML = T.loading;
       modelEl.setAttribute("visible", "true");
       modelEl.setAttribute("src", new URLSearchParams(location.search).get("model") || p.model);
+      camReady = false; userZoom = false;
+      turntable.object3D.rotation.y = 0;
 
       if (slowTimer) clearTimeout(slowTimer);
       slowTimer = setTimeout(() => {

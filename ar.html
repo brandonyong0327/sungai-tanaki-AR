@@ -18,10 +18,11 @@
             position:fixed;inset:0;overscroll-behavior:none;font-size:18px}
 
   /* 相机画面强制铺满全屏 */
-  #stage{position:fixed;inset:0;z-index:1}
+  [hidden]{display:none!important}
+  #stage{position:fixed;inset:0;z-index:1;background:#000}
   video{position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;
-        object-fit:cover!important;object-position:center!important;z-index:-2!important;background:#000}
-  a-scene{position:fixed!important;inset:0;width:100%!important;height:100%!important;display:block}
+        object-fit:cover!important;object-position:center!important;z-index:1!important;background:#000;display:block!important}
+  a-scene{position:fixed!important;inset:0;width:100%!important;height:100%!important;display:block;z-index:2}
   .a-canvas{width:100%!important;height:100%!important;display:block}
 
   .icon-btn{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:50%;
@@ -202,7 +203,7 @@
 <div id="dbg"></div>
 <audio id="narration" preload="auto" loop></audio>
 
-<script src="config.js?v=25"></script>
+<script src="config.js?v=26"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
@@ -366,6 +367,13 @@
     }
 
     sceneEl.addEventListener("arReady", () => {
+      arReadyFlag = true;
+      const v = document.querySelector("video");
+      if (v) {
+        v.muted = true;
+        v.play().catch(() => {});
+        setTimeout(() => { if (v.paused) v.play().catch(() => {}); }, 1200);
+      }
       refit();
       [300, 800, 1600, 2600].forEach(t => setTimeout(refit, t));
       showSheet(null);
@@ -386,34 +394,48 @@
     requestAnimationFrame(animLoop);
   }
 
-  async function preflightCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("NotFoundError");
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-    stream.getTracks().forEach(t => t.stop());
+  let arReadyFlag = false;
+
+  // 相机迟迟不出画面时给出明确提示，而不是一直干等
+  function watchCamera() {
+    setTimeout(() => {
+      if (arReadyFlag) return;
+      const v = document.querySelector("video");
+      if (v && v.videoWidth > 0) return;
+      showError(new Error("CAMERA_START_TIMEOUT"));
+    }, 9000);
   }
 
-  async function startAR() {
+  function startAR() {
+    if (location.protocol !== "https:" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+      return showError(new Error("INSECURE_CONTEXT"));
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return showError(new Error("NotFoundError"));
+    }
     showSheet("bootSheet");
     $("bootLabel").textContent = T.bootCamera;
     $("bootBar").style.width = "0%"; $("bootPct").textContent = "";
-    try { await preflightCamera(); } catch (e) { return showError(e); }
-
     $("bootLabel").textContent = T.bootTarget;
     $("bootBar").style.width = "60%"; $("bootPct").textContent = "60%";
     if (!sceneEl) buildScene();
 
     // 解锁音频（必须在点击手势内）
     audio.play().then(() => audio.pause()).catch(() => {});
+    watchCamera();
   }
 
   function showError(e) {
     console.error("[AR]", e);
+    const code = (e && (e.detail && e.detail.error || e.error || e.name || e.message)) || "ERROR";
+    document.body.setAttribute("data-err", code);
     $("topbar").hidden = true;
     setScanHint(false);
     $("viewfinder").hidden = true;
     $("controls").classList.add("off");
     $("errTitle").textContent = T.errTitle;
-    $("errMsg").innerHTML = T.errBody;
+    $("errMsg").innerHTML = T.errBody +
+      "<br><small style='display:block;margin-top:10px;opacity:.65;font-family:ui-monospace,monospace'>" + code + "</small>";
     showSheet("errorSheet");
   }
 
@@ -440,6 +462,11 @@
   };
   $("retryBtn").onclick = startAR;
   $("startBtn").onclick = startAR;
+  // 相机被暂停/黑屏时，点提示可再拉一次
+  $("hint").onclick = () => {
+    const v = document.querySelector("video");
+    if (v) v.play().catch(() => {});
+  };
 
   window.addEventListener("orientationchange", () => setTimeout(refit, 300));
   window.addEventListener("resize", () => setTimeout(refit, 200));
