@@ -286,26 +286,31 @@
   }
 
   // ---------- 模型 ----------
-  // 按每页模型自身尺寸缩放到书页大小，并把底面贴到纸面
-  function fitToPage(el) {
-    const obj = el.getObject3D("mesh");
-    if (!obj) return;
-    el.setAttribute("scale", "1 1 1");
-    el.setAttribute("position", "0 0 0");
-    sceneEl.object3D.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(obj);
-    if (box.isEmpty()) { el.setAttribute("scale", "0.21 0.21 0.21"); el.setAttribute("position", "0 0.1 0"); return; }
-    const size = box.getSize(new THREE.Vector3());
-    const ctr = box.getCenter(new THREE.Vector3());
-    const planar = Math.max(size.x, size.z) || 1;
-    const s = 0.95 / planar;                 // diorama 约占满整页宽度
-    el.setAttribute("scale", { x: s, y: s, z: s });
-    el.setAttribute("position", {
-      x: -ctr.x * s,
-      y: -box.min.y * s + 0.005,             // 底座落在纸面上
-      z: -ctr.z * s
-    });
+  // 每页模型在“自身局部坐标”里量好的尺寸（离线算好，运行时不再量包围盒，
+  // 因为 mindar 的 anchor 处于相机世界坐标里，setFromObject 会算出错误的位置/缩放）
+  const AR_FIT = {
+    1:  { s: 0.054, x: -0.04, y: 0.04, z:  0.02 },
+    2:  { s: 0.061, x:  0.02, y: 0.04, z:  0.02 },
+    3:  { s: 0.050, x:  0.00, y: 0.14, z:  0.00 },
+    4:  { s: 0.035, x:  0.00, y: 0.21, z:  0.00 },
+    5:  { s: 0.043, x:  0.00, y: 0.23, z:  0.00 },
+    6:  { s: 1.186, x:  0.00, y: 0.27, z:  0.00 },
+    7:  { s: 1.235, x:  0.00, y: 0.25, z:  0.00 },
+    8:  { s: 0.499, x:  0.00, y: 0.22, z:  0.00 },
+    9:  { s: 0.499, x:  0.00, y: 0.06, z:  0.00 },
+    10: { s: 0.216, x:  0.00, y: 0.25, z:  0.00 },
+    11: { s: 0.236, x:  0.00, y: 0.21, z:  0.00 },
+    12: { s: 0.127, x:  0.00, y: 0.15, z:  0.00 },
+  };
+
+  function fitToPage(el, pageNo) {
+    const f = AR_FIT[pageNo] || { s: 0.1, x: 0, y: 0.05, z: 0 };
+    el.setAttribute("scale", { x: f.s, y: f.s, z: f.s });
+    el.setAttribute("position", { x: f.x, y: f.y, z: f.z });
+    el.setAttribute("visible", "true");
   }
+
+  let currentModel = null;
 
   function buildModel(anchorIndex, pageNo) {
     const p = CONFIG.pages[pageNo - 1];
@@ -320,9 +325,9 @@
     m.addEventListener("model-loaded", () => {
       setModelLoading(false);
       showBadge(pageNo);
-      fitToPage(m);
-      setTimeout(() => fitToPage(m), 300);
+      fitToPage(m, pageNo);
       startAnim(m);
+      currentModel = m;
     });
     anchor.appendChild(m);
   }
@@ -480,7 +485,7 @@
     if (!activePage) return;
     const anchor = $("anchor" + CONFIG.targetMap.indexOf(activePage));
     const m = anchor && anchor.querySelector("a-gltf-model");
-    if (m) fitToPage(m);
+    if (m) fitToPage(m, activePage);
   };
   $("muteBtn").onclick = () => {
     muted = !muted; audio.muted = muted;
@@ -511,7 +516,14 @@
       dbgEl.textContent = "video " + (v ? v.videoWidth + "×" + v.videoHeight : "-") +
         "\ndraw  " + (r ? Math.round(r.width) + "×" + Math.round(r.height) : "-") +
         "\nview  " + innerWidth + "×" + innerHeight +
-        "\nfound " + (activePage || "-");
+        "\nfound " + (activePage || "-") +
+        "\nmodel " + (currentModel ? (function () {
+          const o = currentModel.object3D;
+          if (!o) return "no-obj";
+          const sc = o.scale, ps = o.parent ? o.parent.position : o.position;
+          return "s=" + sc.x.toFixed(4) + " p=" + ps.x.toFixed(2) + "," + ps.y.toFixed(2) + "," + ps.z.toFixed(2) +
+                 " anim=" + (currentModel.getAttribute("animation-mixer") ? "y" : "n");
+        })() : "-");
     }, 700);
   }
 
