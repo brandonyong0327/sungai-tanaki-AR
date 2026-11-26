@@ -33,7 +33,7 @@ const CONFIG = {
       page:  n,
       title: "Page " + n,
       thumb: `assets/pages/page${n}.jpg`,
-      model: `assets/models/page${n}.glb?v=${({4:5,5:5,9:5,10:5,8:10})[n] || 4}`,
+      model: `assets/models/page${n}.glb?v=${({4:5,5:5,8:5,9:5,10:5})[n] || 4}`,
       audio: {
         en:  `assets/audio/en/page${n}.mp3`,
         bm:  `assets/audio/bm/page${n}.mp3`,
@@ -265,6 +265,7 @@ CONFIG.ui = {
     ],
   },
 };
+
 
 
 
