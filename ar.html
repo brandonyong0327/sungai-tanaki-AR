@@ -169,7 +169,7 @@
   <a class="icon-btn back-link" href="index.html" aria-label="back">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </a>
-  <img class="cover" src="assets/pages/cover.jpg" alt="Sungai Tanaki cover" onerror="this.style.display='none'"/>
+  <img class="cover" src="assets/pages/cover.jpg?v=2" alt="Sungai Tanaki cover" onerror="this.style.display='none'"/>
   <h1 id="startTitle">Sungai Tanaki</h1>
   <p class="sub" id="startSub"></p>
   <div class="chips" id="langChips"></div>
@@ -185,7 +185,7 @@
 
 <!-- 启动加载页 -->
 <section class="sheet" id="bootSheet" hidden>
-  <img class="cover" src="assets/pages/cover.jpg" alt="" onerror="this.style.display='none'"/>
+  <img class="cover" src="assets/pages/cover.jpg?v=2" alt="" onerror="this.style.display='none'"/>
   <h1 id="bootLabel" style="font-size:24px"></h1>
   <div class="boot-progress"><div class="bar"><span id="bootBar"></span></div><small id="bootPct"></small></div>
 </section>
@@ -206,7 +206,7 @@
 <div id="dbg"></div>
 <audio id="narration" preload="auto" loop></audio>
 
-<script src="config.js?v=37"></script>
+<script src="config.js?v=38"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
@@ -489,7 +489,7 @@
   function buildScene() {
     const stage = $("stage");
     sceneEl = document.createElement("a-scene");
-    sceneEl.setAttribute("mindar-image", "imageTargetSrc: ./assets/targets.mind; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;");
+    sceneEl.setAttribute("mindar-image", "imageTargetSrc: ./assets/targets.mind?v=2; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: no;");
     sceneEl.setAttribute("embedded", "");
     sceneEl.setAttribute("vr-mode-ui", "enabled: false");
     sceneEl.setAttribute("device-orientation-permission-ui", "enabled: false");
@@ -735,6 +735,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 

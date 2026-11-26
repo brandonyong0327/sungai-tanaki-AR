@@ -10,7 +10,7 @@
   html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:var(--cream);font-size:18px;
             overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none}
   #bg{position:fixed;inset:0;background:radial-gradient(circle at 50% 26%,rgba(28,58,40,.9),rgba(14,35,24,.95) 70%);z-index:-1}
-  #bg-art{position:fixed;inset:-12%;z-index:-2;background:url('assets/pages/cover.jpg') center/cover no-repeat;
+  #bg-art{position:fixed;inset:-12%;z-index:-2;background:url('assets/pages/cover.jpg?v=2') center/cover no-repeat;
           filter:blur(30px) saturate(1.15);opacity:.22;transform:scale(1.12)}
   #hud{position:fixed;left:0;right:0;top:0;padding:14px;display:flex;justify-content:space-between;
        align-items:center;z-index:5;gap:8px}
@@ -76,7 +76,7 @@
 
   <audio id="narration" preload="auto" loop></audio>
 
-  <script src="config.js?v=37"></script>
+  <script src="config.js?v=38"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const total = CONFIG.pages.length;
@@ -377,6 +377,7 @@
   </script>
 </body>
 </html>
+
 
 
 

@@ -16,7 +16,7 @@
        line-height:1.6;font-size:1rem;overflow-x:hidden}
 
   /* 封面插画做模糊氛围背景 + 深绿纱罩 */
-  #bg-art{position:fixed;inset:-12%;z-index:-2;background:url('assets/pages/cover.jpg') center/cover no-repeat;
+  #bg-art{position:fixed;inset:-12%;z-index:-2;background:url('assets/pages/cover.jpg?v=2') center/cover no-repeat;
           filter:blur(30px) saturate(1.15);opacity:.30;transform:scale(1.12)}
   body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
     background:
@@ -268,7 +268,7 @@
       <div class="book-pages"></div>
       <div class="book-spine"><span class="spine-title">Sungai Tanaki</span></div>
       <div class="book-front" id="bookFront">
-        <div class="page-layer" id="pageBack"><img id="backImg" src="assets/pages/cover.jpg" alt="Sungai Tanaki page" onerror="this.src='assets/pages/page1.jpg'"/></div>
+        <div class="page-layer" id="pageBack"><img id="backImg" src="assets/pages/cover.jpg?v=2" alt="Sungai Tanaki page" onerror="this.src='assets/pages/page1.jpg'"/></div>
         <div class="page-layer" id="pageLeaf"><img id="leafImg" alt="Sungai Tanaki page"/></div>
         <button class="pg-btn prev" id="pgPrev" aria-label="Previous page">‹</button>
         <button class="pg-btn next" id="pgNext" aria-label="Next page">›</button>
@@ -312,7 +312,7 @@
 </div>
 
 <audio id="sampleAudio" preload="none"></audio>
-<script src="config.js?v=37"></script>
+<script src="config.js?v=38"></script>
 <script>
   const params = new URLSearchParams(location.search);
   const HOME_CODES = ["en", "bm"];
@@ -439,7 +439,7 @@
   }
 
   // ---- 书本翻页（封面 + 故事 12 页，绕书脊真实翻页） ----
-  const bookPages = ["assets/pages/cover.jpg", ...CONFIG.pages.map(p => p.thumb)];
+  const bookPages = ["assets/pages/cover.jpg?v=2", ...CONFIG.pages.map(p => p.thumb)];
   let pg = 0, animating = false;
   const cover = document.getElementById("coverCard");
   const isTouch = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
@@ -532,6 +532,7 @@
 </script>
 </body>
 </html>
+
 
 
 
