@@ -285,36 +285,22 @@
     $("playLabel").textContent = playing ? T.pause : T.play;
   }
 
-  // ---------- 模型 ----------
-  // 每页模型在“自身局部坐标”里量好的尺寸（离线算好，运行时不再量包围盒，
-  // 因为 mindar 的 anchor 处于相机世界坐标里，setFromObject 会算出错误的位置/缩放）
-  const AR_FIT = {
-    1:  { s: 0.054, x: -0.04, y: 0.04, z:  0.02 },
-    2:  { s: 0.061, x:  0.02, y: 0.04, z:  0.02 },
-    3:  { s: 0.050, x:  0.00, y: 0.14, z:  0.00 },
-    4:  { s: 0.035, x:  0.00, y: 0.21, z:  0.00 },
-    5:  { s: 0.043, x:  0.00, y: 0.23, z:  0.00 },
-    6:  { s: 1.186, x:  0.00, y: 0.27, z:  0.00 },
-    7:  { s: 1.235, x:  0.00, y: 0.25, z:  0.00 },
-    8:  { s: 0.499, x:  0.00, y: 0.22, z:  0.00 },
-    9:  { s: 0.499, x:  0.00, y: 0.06, z:  0.00 },
-    10: { s: 0.216, x:  0.00, y: 0.25, z:  0.00 },
-    11: { s: 0.236, x:  0.00, y: 0.21, z:  0.00 },
-    12: { s: 0.127, x:  0.00, y: 0.15, z:  0.00 },
-  };
+  // ---------- 模型：固定在相机正前方（永远居中、完全不受追踪抖动影响） ----------
+  let displayRoot = null, currentModel = null, shownPage = 0;
 
-  function fitToPage(el, pageNo) {
-    const f = AR_FIT[pageNo] || { s: 0.1, x: 0, y: 0.05, z: 0 };
-    el.setAttribute("scale", { x: f.s, y: f.s, z: f.s });
-    el.setAttribute("position", { x: f.x, y: f.y, z: f.z });
-    el.setAttribute("visible", "true");
+  function ensureDisplay() {
+    if (displayRoot) return displayRoot;
+    const cam = sceneEl.querySelector("a-camera") || sceneEl.querySelector("[camera]");
+    displayRoot = document.createElement("a-entity");
+    displayRoot.setAttribute("id", "displayRoot");
+    displayRoot.setAttribute("position", "0 0 0");
+    cam.appendChild(displayRoot);
+    return displayRoot;
   }
 
-  let currentModel = null;
-
-  // 在 anchor 局部坐标系里量模型包围盒（把世界矩阵除掉 anchor 的世界矩阵）
-  function localBox(obj, anchorWorld) {
-    const inv = new THREE.Matrix4().copy(anchorWorld).invert();
+  // 在父物体局部坐标里量模型包围盒（不受相机/锚点世界变换影响）
+  function localBox(obj, parentWorld) {
+    const inv = new THREE.Matrix4().copy(parentWorld).invert();
     const box = new THREE.Box3();
     obj.updateWorldMatrix(true, true);
     obj.traverse(o => {
@@ -327,47 +313,54 @@
     return box;
   }
 
-  function fitToPage(el, pageNo) {
+  const DISPLAY_DIST = 1.15;
+
+  function fitToScreen(el) {
     const obj = el.getObject3D("mesh");
-    const anchorWorld = el.parentNode && el.parentNode.object3D ? el.parentNode.object3D.matrixWorld : new THREE.Matrix4();
-    if (!obj || !anchorWorld) { return; }
+    const cam = sceneEl.camera;
+    if (!obj || !cam) return;
     el.setAttribute("scale", "1 1 1");
     el.setAttribute("position", "0 0 0");
-    const box = localBox(obj, anchorWorld);
-    if (!box || box.isEmpty()) {
-      const f = AR_FIT[pageNo] || { s: 0.1, x: 0, y: 0.05, z: 0 };
-      el.setAttribute("scale", { x: f.s, y: f.s, z: f.s });
-      el.setAttribute("position", { x: f.x, y: f.y, z: f.z });
-      el.setAttribute("visible", "true");
-      return;
-    }
+    const box = localBox(obj, el.parentNode.object3D.matrixWorld);
+    if (!box || box.isEmpty()) return;
     const size = box.getSize(new THREE.Vector3());
     const ctr = box.getCenter(new THREE.Vector3());
-    const planar = Math.max(size.x, size.z) || 1;
-    const s = 0.92 / planar;                        // diorama 约占书页宽度的 92%
+    // mindar 的相机 near 是以“目标图宽”为尺度的世界单位（实测 10），
+    // 太近会被近裁剪面切掉，所以摆放距离必须大于 near 的一定倍数
+    const D = Math.max((cam.near || 0.1) * 4, 0.8);
+    const tan = Math.tan((cam.fov || 45) * Math.PI / 360);
+    const viewH = 2 * D * tan;
+    const viewW = viewH * (cam.aspect || 0.5);
+    const s = Math.min(
+      0.86 * viewW / (size.x || 1),     // 宽度最多占 86% 屏宽
+      0.68 * viewH / (size.y || 1),     // 高度最多占 68% 屏高
+      1.10 * viewW / (size.z || 1)      // 进深也别戳出画面
+    );
     el.setAttribute("scale", { x: s, y: s, z: s });
-    el.setAttribute("position", { x: -ctr.x * s, y: -box.min.y * s, z: -ctr.z * s });
+    el.setAttribute("position", { x: -ctr.x * s, y: -ctr.y * s, z: -D - ctr.z * s });
     el.setAttribute("visible", "true");
   }
 
-  function buildModel(anchorIndex, pageNo) {
+  function buildModel(pageNo) {
     const p = CONFIG.pages[pageNo - 1];
-    const anchor = $("anchor" + anchorIndex);
-    if (!p || !anchor) return;
+    if (!p) return;
+    const root = ensureDisplay();
+    if (currentModel) {
+      if (currentModel.parentNode) currentModel.parentNode.removeChild(currentModel);
+      currentModel = null;
+    }
     const m = document.createElement("a-gltf-model");
     m.setAttribute("src", p.model);
-    m.setAttribute("position", "0 0.1 0");
-    m.setAttribute("scale", "0.21 0.21 0.21");
-    // 角色材质已在上游统一改成 OPAQUE，这里再兜底一次
-    m.addEventListener("model-error", () => { setModelLoading(false); showBadge(null); $("hint").textContent = "⚠️ " + T.tipMissing.replace("{n}", pageNo); });
+    m.addEventListener("model-error", () => { setModelLoading(false); $("hint").textContent = "⚠️ " + T.tipMissing.replace("{n}", pageNo); });
     m.addEventListener("model-loaded", () => {
       setModelLoading(false);
       showBadge(pageNo);
-      fitToPage(m, pageNo);
+      fitToScreen(m);
       startAnim(m);
-      currentModel = m;
+      [400, 1200, 2400].forEach(t => setTimeout(() => { if (currentModel === m) fitToScreen(m); }, t));
     });
-    anchor.appendChild(m);
+    root.appendChild(m);
+    currentModel = m;
   }
 
   const clipIndex = (CONFIG.animClip === undefined) ? 0 : CONFIG.animClip;
@@ -383,17 +376,18 @@
   // ---------- 识别 ----------
   function onFound(ai) {
     const pageNo = CONFIG.targetMap[ai];
-    if (!pageNo || activePage === pageNo) return;
-    activePage = pageNo;
+    if (!pageNo) return;
     setScanHint(false);
     $("controls").classList.remove("off");
-    if (!loaded[pageNo]) {
-      setModelLoading(true);
-      buildModel(ai, pageNo);
-      loaded[pageNo] = true;
-    } else {
+    if (pageNo === shownPage) {          // 同一页再次识别：不重建，避免闪一下
+      activePage = pageNo;
       showBadge(pageNo);
+      return;
     }
+    activePage = pageNo;
+    shownPage = pageNo;
+    setModelLoading(true);
+    buildModel(pageNo);
     playNarration(pageNo);
   }
   function onLost(ai) {
@@ -401,8 +395,10 @@
     if (!pageNo || activePage !== pageNo) return;
     activePage = null;
     audio.pause(); audio.currentTime = 0;
-    showBadge(null); setModelLoading(false); setScanHint(true);
-    $("controls").classList.add("off");
+    showBadge(null); setModelLoading(false);
+    // 模型挂在相机前面，丢了识别也继续显示，避免一闪一闪地抖
+    setScanHint(!currentModel);
+    if (!currentModel) $("controls").classList.add("off");
   }
 
   // ---------- 相机画面尺寸修正 ----------
@@ -410,6 +406,7 @@
     const sys = sceneEl && sceneEl.systems["mindar-image-system"];
     if (!sys || !sys.video || !sys.video.videoWidth) return;
     try { sys._resize(); } catch (e) {}
+    if (currentModel) setTimeout(() => fitToScreen(currentModel), 60);
   }
 
   // ---------- 动态注入 AR 场景（点开始后才请求相机） ----------
@@ -437,36 +434,7 @@
       el.addEventListener("targetLost", () => onLost(i));
     }
 
-    // 调试探针：
-    //  A) 相机正前方 0.3 单位的红方块（纯世界坐标，验证 3D 是否画在视频上面）
-    //  B) anchor0 原点处 0.3 单位的青方块（验证锚点原点在哪）
-    //  C) anchor0 上 X(红)/Y(绿)/Z(蓝) 三根 1 单位长的实心条（看坐标朝向和 1 单位多大）
-    if (params.get("debug") === "1") {
-      const camBox = document.createElement("a-box");
-      camBox.setAttribute("color", "#ff0000");
-      camBox.setAttribute("width", "200"); camBox.setAttribute("height", "200"); camBox.setAttribute("depth", "5");
-      camBox.setAttribute("position", "0 0 -2000");
-      sceneEl.appendChild(camBox);
-
-      const a0 = $("anchor0");
-      if (a0) {
-        const org = document.createElement("a-box");
-        org.setAttribute("color", "#00ffff");
-        org.setAttribute("width", "0.3"); org.setAttribute("height", "0.3"); org.setAttribute("depth", "0.3");
-        a0.appendChild(org);
-        function bar(color, w, h, d, x, y, z) {
-          const b = document.createElement("a-box");
-          b.setAttribute("color", color);
-          b.setAttribute("width", w); b.setAttribute("height", h); b.setAttribute("depth", d);
-          b.setAttribute("position", x + " " + y + " " + z);
-          a0.appendChild(b);
-        }
-        bar("#ff2222", 1, 0.02, 0.02, 0.5, 0, 0);       // X 轴 红
-        bar("#22ff55", 0.02, 1, 0.02, 0, 0.5, 0);       // Y 轴 绿
-        bar("#2266ff", 0.02, 0.02, 1, 0, 0, 0.5);       // Z 轴 蓝
-        bar("#ffffff", 0.06, 0.06, 0.06, 0, 0, 0);      // 原点
-      }
-    }
+    // 显示层在第一次加载模型时创建（固定在相机正前方）
 
     sceneEl.addEventListener("arReady", () => {
       arReadyFlag = true;
@@ -550,12 +518,7 @@
     updatePlayUI();
   };
   $("replayBtn").onclick = () => { if (activePage) playNarration(activePage); };
-  $("resetBtn").onclick = () => {
-    if (!activePage) return;
-    const anchor = $("anchor" + CONFIG.targetMap.indexOf(activePage));
-    const m = anchor && anchor.querySelector("a-gltf-model");
-    if (m) fitToPage(m, activePage);
-  };
+  $("resetBtn").onclick = () => { if (currentModel) fitToScreen(currentModel); };
   $("muteBtn").onclick = () => {
     muted = !muted; audio.muted = muted;
     $("muteBtn").setAttribute("aria-pressed", muted);
@@ -585,24 +548,17 @@
       if (currentModel && sceneEl && sceneEl.camera) {
         try {
           const o = currentModel.object3D;
-          out += "\ns " + o.scale.x.toFixed(4) + " pos " + o.position.x.toFixed(3) + "," +
-                 o.position.y.toFixed(3) + "," + o.position.z.toFixed(3);
+          const cam = sceneEl.camera;
+          out += "\ns " + o.scale.x.toFixed(4) + " pos " + o.position.x.toFixed(2) + "," +
+                 o.position.y.toFixed(2) + "," + o.position.z.toFixed(2);
           const box = new THREE.Box3().setFromObject(o);
           const size = box.getSize(new THREE.Vector3());
           const ctr = box.getCenter(new THREE.Vector3());
-          const cam = sceneEl.camera;
-          const d = cam.position.distanceTo(ctr);
           const c = ctr.clone().project(cam);
-          // anchor 的 1 单位在世界上有多大
-          const aw = new THREE.Vector3(), aq = new THREE.Quaternion(), ap = new THREE.Vector3();
-          currentModel.parentNode.object3D.matrixWorld.decompose(ap, aq, aw);
-          out += "\nbb " + size.x.toFixed(3) + " " + size.y.toFixed(3) + " " + size.z.toFixed(3) +
-                 "  page=" + (size.x / aw.x).toFixed(2) + "x";
-          out += "\nd " + d.toFixed(2) + " ndc " + c.x.toFixed(2) + " " + c.y.toFixed(2) + " " + c.z.toFixed(2);
-          out += "\nanc " + aw.x.toFixed(2) + " " + aw.y.toFixed(2) + " " + aw.z.toFixed(2) +
-                 "  apos " + ap.x.toFixed(1) + " " + ap.y.toFixed(1) + " " + ap.z.toFixed(1);
-          out += "\ncam " + cam.position.x.toFixed(1) + " " + cam.position.y.toFixed(1) + " " + cam.position.z.toFixed(1) +
-                 " fov " + cam.fov.toFixed(1) + " near " + cam.near.toFixed(2) + " far " + cam.far.toFixed(0);
+          out += "\nbb " + size.x.toFixed(3) + " " + size.y.toFixed(3) + " " + size.z.toFixed(3);
+          out += "\nndc " + c.x.toFixed(2) + " " + c.y.toFixed(2) + " " + c.z.toFixed(2);
+          out += "\ncam fov " + cam.fov.toFixed(1) + " aspect " + cam.aspect.toFixed(2) +
+                 " near " + cam.near.toFixed(2);
         } catch (e) { out += "\nerr " + e.message; }
       }
       dbgEl.textContent = out;
