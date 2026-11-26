@@ -388,15 +388,24 @@
     mixers.push(mixer);
   }
 
+  let hideTimer = 0;
+  function showDisplay(on) {
+    if (!displayRoot) return;
+    displayRoot.setAttribute("visible", on ? "true" : "false");
+  }
+
   // ---------- 识别 ----------
   function onFound(ai) {
     const pageNo = CONFIG.targetMap[ai];
     if (!pageNo) return;
+    clearTimeout(hideTimer);
+    if (displayRoot) displayRoot.setAttribute("visible", "true");
     setScanHint(false);
     $("controls").classList.remove("off");
-    if (pageNo === shownPage) {          // 同一页再次识别：不重建，避免闪一下
+    if (pageNo === shownPage && currentModel) {   // 同一页再次识别：直接显示，不重建
       activePage = pageNo;
       showBadge(pageNo);
+      fitToScreen(currentModel);
       return;
     }
     activePage = pageNo;
@@ -411,9 +420,14 @@
     activePage = null;
     audio.pause(); audio.currentTime = 0;
     showBadge(null); setModelLoading(false);
-    // 模型挂在相机前面，丢了识别也继续显示，避免一闪一闪地抖
-    setScanHint(!currentModel);
-    if (!currentModel) $("controls").classList.add("off");
+    // 书页离开镜头 1.2 秒后收起模型（短暂丢帧不会闪）
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      if (activePage) return;
+      showDisplay(false);
+      setScanHint(true);
+      $("controls").classList.add("off");
+    }, 1200);
   }
 
   // ---------- 相机画面尺寸修正 ----------
