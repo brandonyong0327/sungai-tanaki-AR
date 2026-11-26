@@ -280,10 +280,28 @@
     const p = CONFIG.pages[pageNo - 1];
     const src = p && p.audio[lang];
     if (!src) return;
-    if (audio.getAttribute("src") !== src) audio.setAttribute("src", src);
-    audio.currentTime = 0;
     wantPlay = true;
-    audio.play().catch(() => {});
+
+    const start = () => { if (wantPlay) audio.play().catch(() => {}); };
+
+    if (audio.getAttribute("src") === src) {
+      // 同一页重播：src 没变，直接播即可
+      audio.currentTime = 0;
+      start();
+      updatePlayUI();
+      return;
+    }
+
+    // 换页要换 src：必须等 canplay 再 play，
+    // 否则 play() 会被“新的加载请求”打断（AbortError），表现就是不自动出声
+    audio.pause();
+    audio.src = src;
+    audio.load();
+    let fired = false;
+    const once = () => { if (fired) return; fired = true; audio.removeEventListener("canplay", once); audio.removeEventListener("loadeddata", once); start(); };
+    audio.addEventListener("canplay", once);
+    audio.addEventListener("loadeddata", once);
+    setTimeout(() => { if (!fired) { fired = true; start(); } }, 400);
     updatePlayUI();
   }
 
@@ -404,10 +422,17 @@
     mixers.push(mixer);
   }
 
-  let hideTimer = 0;
+  let hideTimer = 0, wasHidden = true;
   function showDisplay(on) {
     if (!displayRoot) return;
     displayRoot.setAttribute("visible", on ? "true" : "false");
+    if (!on) wasHidden = true;
+  }
+
+  // 每次重新识别都把视角和缩放打回初始状态
+  function resetView() {
+    az = 0; elv = 0; zoom = 1;
+    applyPivot();
   }
 
   // ---------- 识别 ----------
@@ -418,6 +443,11 @@
     if (displayRoot) displayRoot.setAttribute("visible", "true");
     setScanHint(false);
     $("controls").classList.remove("off");
+
+    const fresh = (pageNo !== shownPage) || wasHidden;   // 之前被收起 / 换了页 → 重置
+    if (fresh) resetView();
+    wasHidden = false;
+
     if (pageNo === shownPage && currentModel) {   // 同一页再次识别：直接显示，不重建
       activePage = pageNo;
       showBadge(pageNo);
@@ -443,6 +473,7 @@
       showDisplay(false);
       setScanHint(true);
       $("controls").classList.add("off");
+      resetView();
     }, 500);
   }
 
@@ -605,8 +636,17 @@
     $("bootBar").style.width = "60%"; $("bootPct").textContent = "60%";
     if (!sceneEl) buildScene();
 
-    // 解锁音频（必须在点击手势内）
-    audio.play().then(() => audio.pause()).catch(() => {});
+    // 解锁音频：必须在这个点击手势里真实播一次带 src 的音频，
+    // 空元素直接 play() 会被浏览器拒绝，等于没解锁（这就是之前必须手按播放键的原因）
+    try {
+      const warm = CONFIG.pages[0] && CONFIG.pages[0].audio[lang];
+      if (warm) {
+        audio.src = warm;
+        audio.currentTime = 0;
+        const pr = audio.play();
+        if (pr && pr.then) pr.then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+      }
+    } catch (e) {}
     watchCamera();
   }
 
