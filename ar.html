@@ -399,25 +399,22 @@
       el.addEventListener("targetLost", () => onLost(i));
     }
 
-    // 调试标尺：anchor0 上画一个 1×1 单位的绿方块 + 一根 1 单位的竖线，
-    // 用来跟书页比对，确认 mindar 的 1 单位到底等于多大
+    // 调试三轴标尺：anchor0 上画 X(红) / Y(绿) / Z(蓝) 三根 1 单位长的实心条 + 中心小方块，
+    // 用来确认 mindar 的坐标系朝向和 1 单位到底多大
     if (params.get("debug") === "1") {
       const a0 = $("anchor0");
       if (a0) {
-        const sq = document.createElement("a-plane");
-        sq.setAttribute("color", "#00ff88");
-        sq.setAttribute("opacity", "0.30");
-        sq.setAttribute("width", "1");
-        sq.setAttribute("height", "1");
-        sq.setAttribute("position", "0 0 0.002");
-        a0.appendChild(sq);
-        const bar = document.createElement("a-box");
-        bar.setAttribute("color", "#ff3355");
-        bar.setAttribute("width", "0.02");
-        bar.setAttribute("height", "1");
-        bar.setAttribute("depth", "0.02");
-        bar.setAttribute("position", "-0.5 0.5 0.002");
-        a0.appendChild(bar);
+        function bar(color, w, h, d, x, y, z) {
+          const b = document.createElement("a-box");
+          b.setAttribute("color", color);
+          b.setAttribute("width", w); b.setAttribute("height", h); b.setAttribute("depth", d);
+          b.setAttribute("position", x + " " + y + " " + z);
+          a0.appendChild(b);
+        }
+        bar("#ff2222", 1, 0.02, 0.02, 0.5, 0, 0);       // X 轴 红
+        bar("#22ff55", 0.02, 1, 0.02, 0, 0.5, 0);       // Y 轴 绿
+        bar("#2266ff", 0.02, 0.02, 1, 0, 0, 0.5);       // Z 轴 蓝
+        bar("#ffffff", 0.06, 0.06, 0.06, 0, 0, 0);      // 原点
       }
     }
 
