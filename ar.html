@@ -113,6 +113,9 @@
 
   #dbg{position:fixed;left:8px;top:130px;z-index:7;font:13px/1.5 ui-monospace,monospace;
        background:rgba(0,0,0,.72);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
+
+  /* AR 画面区允许手势，别让浏览器拿去滚动 */
+  #stage{touch-action:none}
 </style>
 </head>
 <body>
@@ -286,16 +289,28 @@
   }
 
   // ---------- 模型：固定在相机正前方（永远居中、完全不受追踪抖动影响） ----------
-  let displayRoot = null, currentModel = null, shownPage = 0;
+  let displayRoot = null, pivot = null, currentModel = null, shownPage = 0;
+  // 手势状态：az 水平角、el 俯仰角、zoom 缩放倍数
+  let az = 0, elv = 12, zoom = 1, lastTouch = 0;
+  const ZOOM_MIN = 0.45, ZOOM_MAX = 3.0;
+
+  function applyPivot() {
+    if (!pivot) return;
+    pivot.setAttribute("rotation", { x: elv, y: az, z: 0 });
+    pivot.setAttribute("scale", { x: zoom, y: zoom, z: zoom });
+  }
 
   function ensureDisplay() {
-    if (displayRoot) return displayRoot;
+    if (displayRoot) return pivot;
     const cam = sceneEl.querySelector("a-camera") || sceneEl.querySelector("[camera]");
     displayRoot = document.createElement("a-entity");
-    displayRoot.setAttribute("id", "displayRoot");
     displayRoot.setAttribute("position", "0 0 0");
     cam.appendChild(displayRoot);
-    return displayRoot;
+    pivot = document.createElement("a-entity");
+    pivot.setAttribute("id", "displayPivot");
+    displayRoot.appendChild(pivot);
+    applyPivot();
+    return pivot;
   }
 
   // 在父物体局部坐标里量模型包围盒（不受相机/锚点世界变换影响）
@@ -307,18 +322,16 @@
       if (!o.isMesh || !o.geometry) return;
       if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
       if (!o.geometry.boundingBox) return;
-      const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
-      box.union(o.geometry.boundingBox.clone().applyMatrix4(m));
+      const mm = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+      box.union(o.geometry.boundingBox.clone().applyMatrix4(mm));
     });
     return box;
   }
 
-  const DISPLAY_DIST = 1.15;
-
   function fitToScreen(el) {
     const obj = el.getObject3D("mesh");
     const cam = sceneEl.camera;
-    if (!obj || !cam) return;
+    if (!obj || !cam || !pivot) return;
     el.setAttribute("scale", "1 1 1");
     el.setAttribute("position", "0 0 0");
     const box = localBox(obj, el.parentNode.object3D.matrixWorld);
@@ -337,8 +350,10 @@
       1.10 * viewW / (size.z || 1)      // 进深也别戳出画面
     );
     el.setAttribute("scale", { x: s, y: s, z: s });
-    el.setAttribute("position", { x: -ctr.x * s, y: -ctr.y * s, z: -D - ctr.z * s });
+    el.setAttribute("position", { x: -ctr.x * s, y: -ctr.y * s, z: -ctr.z * s });
     el.setAttribute("visible", "true");
+    pivot.setAttribute("position", { x: 0, y: 0, z: -D });   // 转台圆心 = 模型中心
+    applyPivot();
   }
 
   function buildModel(pageNo) {
@@ -459,9 +474,78 @@
       const dt = Math.min((now - lastTick) / 1000, 0.12);
       lastTick = now;
       for (let i = 0; i < mixers.length; i++) mixers[i].update(dt);
+      // 闲置 5 秒后缓慢自转，一碰就停
+      if (pivot && currentModel && (now - lastTouch) > 5000) {
+        az += 12 * dt;            // 12°/秒
+        applyPivot();
+      }
       requestAnimationFrame(animLoop);
     }
     requestAnimationFrame(animLoop);
+
+    setupGestures();
+  }
+
+  // ---------- 手势：单指拖 = 绕模型环绕，双指捏合 = 缩放，滚轮 = 缩放 ----------
+  function setupGestures() {
+    const stage = $("stage");
+    if (!stage || stage.dataset.gesture) return;
+    stage.dataset.gesture = "1";
+    const pts = new Map();
+    let pinchStart = 0, zoomStart = 1;
+
+    function spread() {
+      const a = [...pts.values()];
+      if (a.length < 2) return 0;
+      return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+    }
+
+    stage.addEventListener("pointerdown", e => {
+      if (!pivot) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) { pinchStart = spread(); zoomStart = zoom; }
+      lastTouch = performance.now();
+    });
+
+    stage.addEventListener("pointermove", e => {
+      if (!pivot) return;
+      const prev = pts.get(e.pointerId);
+      if (!prev) return;
+      const cur = { x: e.clientX, y: e.clientY };
+      if (pts.size === 1) {
+        az -= (cur.x - prev.x) * 0.32;
+        elv += (cur.y - prev.y) * 0.22;
+        elv = Math.max(-75, Math.min(75, elv));
+        pts.set(e.pointerId, cur);
+        applyPivot();
+      } else {
+        pts.set(e.pointerId, cur);
+        const d = spread();
+        if (pinchStart > 0 && d > 0) {
+          zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomStart * (d / pinchStart)));
+          applyPivot();
+        }
+      }
+      lastTouch = performance.now();
+      e.preventDefault();
+    }, { passive: false });
+
+    function up(e) {
+      pts.delete(e.pointerId);
+      if (pts.size < 2) pinchStart = 0;
+      lastTouch = performance.now();
+    }
+    stage.addEventListener("pointerup", up);
+    stage.addEventListener("pointercancel", up);
+    stage.addEventListener("pointerleave", up);
+
+    stage.addEventListener("wheel", e => {
+      if (!pivot) return;
+      e.preventDefault();
+      zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom * (1 - Math.sign(e.deltaY) * 0.08)));
+      applyPivot();
+      lastTouch = performance.now();
+    }, { passive: false });
   }
 
   let arReadyFlag = false;
@@ -518,7 +602,11 @@
     updatePlayUI();
   };
   $("replayBtn").onclick = () => { if (activePage) playNarration(activePage); };
-  $("resetBtn").onclick = () => { if (currentModel) fitToScreen(currentModel); };
+  $("resetBtn").onclick = () => {
+    az = 0; elv = 12; zoom = 1;
+    if (currentModel) fitToScreen(currentModel);
+    applyPivot();
+  };
   $("muteBtn").onclick = () => {
     muted = !muted; audio.muted = muted;
     $("muteBtn").setAttribute("aria-pressed", muted);
