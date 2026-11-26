@@ -202,7 +202,7 @@
 <div id="dbg"></div>
 <audio id="narration" preload="auto" loop></audio>
 
-<script src="config.js?v=23"></script>
+<script src="config.js?v=25"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
@@ -375,10 +375,15 @@
     });
     sceneEl.addEventListener("arError", showError);
 
-    sceneEl.addEventListener("tick", (e) => {
-      const dt = (e.detail.timeDelta || 16) / 1000;
+    // 动画驱动：用 rAF 而不是 a-scene 的 tick 事件（tick 在部分机型上不触发）
+    let lastTick = performance.now();
+    function animLoop(now) {
+      const dt = Math.min((now - lastTick) / 1000, 0.12);
+      lastTick = now;
       for (let i = 0; i < mixers.length; i++) mixers[i].update(dt);
-    });
+      requestAnimationFrame(animLoop);
+    }
+    requestAnimationFrame(animLoop);
   }
 
   async function preflightCamera() {

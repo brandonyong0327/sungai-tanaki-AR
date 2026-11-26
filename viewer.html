@@ -63,7 +63,7 @@
 
   <audio id="narration" preload="auto" loop></audio>
 
-  <script src="config.js?v=23"></script>
+  <script src="config.js?v=25"></script>
   <script>
     const params = new URLSearchParams(location.search);
     const total = CONFIG.pages.length;
@@ -107,9 +107,15 @@
       mixer = new THREE.AnimationMixer(obj);
       mixer.clipAction(obj.animations[Math.min(clipIndex, obj.animations.length - 1)]).play();
     }
-    sceneEl.addEventListener("tick", (e) => {
-      if (mixer) mixer.update((e.detail.timeDelta || 16) / 1000);
-    });
+    // 动画驱动：rAF 更稳（a-scene tick 在部分机型上不触发）
+    let lastTick = performance.now();
+    function animLoop(now) {
+      const dt = Math.min((now - lastTick) / 1000, 0.12);
+      lastTick = now;
+      if (mixer) mixer.update(dt);
+      requestAnimationFrame(animLoop);
+    }
+    requestAnimationFrame(animLoop);
 
     modelEl.addEventListener("model-error", () => {
       noteEl.style.display = "block";
@@ -160,7 +166,7 @@
       noteEl.style.display = "block";
       noteEl.innerHTML = T.loading;
       modelEl.setAttribute("visible", "true");
-      modelEl.setAttribute("src", p.model);
+      modelEl.setAttribute("src", new URLSearchParams(location.search).get("model") || p.model);
 
       if (slowTimer) clearTimeout(slowTimer);
       slowTimer = setTimeout(() => {
