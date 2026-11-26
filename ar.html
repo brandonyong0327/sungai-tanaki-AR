@@ -94,7 +94,9 @@
         border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  .viewfinder{position:fixed;inset:0;z-index:5;pointer-events:none;display:grid;place-items:center}
+  .viewfinder{position:fixed;inset:0;z-index:5;pointer-events:none;display:grid;place-items:center;
+        transition:opacity .22s ease}
+  .viewfinder.dim{opacity:0}
   .frame{position:relative;width:min(72vw,52vh);aspect-ratio:3/4}
   .frame i{position:absolute;width:38px;height:38px;border:4px solid #fff;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
   .frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:12px}
@@ -271,6 +273,20 @@
     if (on) { h.textContent = "🔍 " + T.tipIdle; h.classList.remove("off"); }
     else h.classList.add("off");
   }
+  // 取景框（四角格子 + 黄色扫描线）：有模型时收起，模型消失或换页时回来
+  let vfTimer = 0;
+  function setViewfinder(on) {
+    const v = $("viewfinder");
+    if (!v) return;
+    clearTimeout(vfTimer);
+    if (on) {
+      v.hidden = false;
+      requestAnimationFrame(() => v.classList.remove("dim"));
+    } else {
+      v.classList.add("dim");
+      vfTimer = setTimeout(() => { if (v.classList.contains("dim")) v.hidden = true; }, 260);
+    }
+  }
   function setModelLoading(on) { $("modelLoading").hidden = !on; }
 
   // ---------- 音频 ----------
@@ -442,6 +458,7 @@
     clearTimeout(hideTimer);
     if (displayRoot) displayRoot.setAttribute("visible", "true");
     setScanHint(false);
+    setViewfinder(false);          // 模型出来了，收掉四角框 + 黄线
     $("controls").classList.remove("off");
 
     const fresh = (pageNo !== shownPage) || wasHidden;   // 之前被收起 / 换了页 → 重置
@@ -472,6 +489,7 @@
       if (activePage) return;
       showDisplay(false);
       setScanHint(true);
+      setViewfinder(true);        // 模型收起 → 四角框 + 黄线回来
       $("controls").classList.add("off");
       resetView();
     }, 500);
@@ -524,7 +542,7 @@
       [300, 800, 1600, 2600].forEach(t => setTimeout(refit, t));
       showSheet(null);
       $("topbar").hidden = false;
-      $("viewfinder").hidden = false;
+      setViewfinder(true);
       setScanHint(true);
       prefetchAudio();            // 相机一就绪就把旁白抓进缓存
     });
@@ -657,6 +675,7 @@
     $("topbar").hidden = true;
     setScanHint(false);
     $("viewfinder").hidden = true;
+    $("viewfinder").classList.add("dim");
     $("controls").classList.add("off");
     $("errTitle").textContent = T.errTitle;
     $("errMsg").innerHTML = T.errBody +
@@ -735,6 +754,9 @@
 </script>
 </body>
 </html>
+
+
+
 
 
 
