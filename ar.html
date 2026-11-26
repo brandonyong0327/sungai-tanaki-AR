@@ -111,8 +111,8 @@
         color:#2a1a05;border:0}
   .off{opacity:0;pointer-events:none}
 
-  #dbg{position:fixed;left:8px;bottom:72px;z-index:7;font:12px/1.5 ui-monospace,monospace;
-       background:rgba(0,0,0,.65);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
+  #dbg{position:fixed;left:8px;top:130px;z-index:7;font:13px/1.5 ui-monospace,monospace;
+       background:rgba(0,0,0,.72);padding:6px 8px;border-radius:8px;display:none;white-space:pre}
 </style>
 </head>
 <body>
@@ -311,6 +311,44 @@
   }
 
   let currentModel = null;
+
+  // 在 anchor 局部坐标系里量模型包围盒（把世界矩阵除掉 anchor 的世界矩阵）
+  function localBox(obj, anchorWorld) {
+    const inv = new THREE.Matrix4().copy(anchorWorld).invert();
+    const box = new THREE.Box3();
+    obj.updateWorldMatrix(true, true);
+    obj.traverse(o => {
+      if (!o.isMesh || !o.geometry) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      if (!o.geometry.boundingBox) return;
+      const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+      box.union(o.geometry.boundingBox.clone().applyMatrix4(m));
+    });
+    return box;
+  }
+
+  function fitToPage(el, pageNo) {
+    const obj = el.getObject3D("mesh");
+    const anchorWorld = el.parentNode && el.parentNode.object3D ? el.parentNode.object3D.matrixWorld : new THREE.Matrix4();
+    if (!obj || !anchorWorld) { return; }
+    el.setAttribute("scale", "1 1 1");
+    el.setAttribute("position", "0 0 0");
+    const box = localBox(obj, anchorWorld);
+    if (!box || box.isEmpty()) {
+      const f = AR_FIT[pageNo] || { s: 0.1, x: 0, y: 0.05, z: 0 };
+      el.setAttribute("scale", { x: f.s, y: f.s, z: f.s });
+      el.setAttribute("position", { x: f.x, y: f.y, z: f.z });
+      el.setAttribute("visible", "true");
+      return;
+    }
+    const size = box.getSize(new THREE.Vector3());
+    const ctr = box.getCenter(new THREE.Vector3());
+    const planar = Math.max(size.x, size.z) || 1;
+    const s = 0.92 / planar;                        // diorama 约占书页宽度的 92%
+    el.setAttribute("scale", { x: s, y: s, z: s });
+    el.setAttribute("position", { x: -ctr.x * s, y: -box.min.y * s, z: -ctr.z * s });
+    el.setAttribute("visible", "true");
+  }
 
   function buildModel(anchorIndex, pageNo) {
     const p = CONFIG.pages[pageNo - 1];
@@ -531,36 +569,29 @@
     setInterval(() => {
       const sys = sceneEl && sceneEl.systems["mindar-image-system"];
       const v = sys && sys.video;
-      const r = v ? v.getBoundingClientRect() : null;
-      dbgEl.textContent = "video " + (v ? v.videoWidth + "×" + v.videoHeight : "-") +
-        "\ndraw  " + (r ? Math.round(r.width) + "×" + Math.round(r.height) : "-") +
-        "\nview  " + innerWidth + "×" + innerHeight +
-        "\nfound " + (activePage || "-") +
-        "\nmodel " + (currentModel ? (function () {
+      let out = "found " + (activePage || "-") + "  video " + (v ? v.videoWidth + "x" + v.videoHeight : "-");
+      if (currentModel && sceneEl && sceneEl.camera) {
+        try {
           const o = currentModel.object3D;
-          if (!o) return "no-obj";
-          const sc = o.scale, mp = o.position;
-          return "s=" + sc.x.toFixed(4) + " p=" + mp.x.toFixed(2) + "," + mp.y.toFixed(2) + "," + mp.z.toFixed(2);
-        })() : "-") +
-        "\nbb    " + (function () {
-          if (!currentModel || !sceneEl || !sceneEl.camera) return "-";
-          try {
-            const box = new THREE.Box3().setFromObject(currentModel.object3D);
-            if (box.isEmpty()) return "empty";
-            const size = box.getSize(new THREE.Vector3());
-            const ctr = box.getCenter(new THREE.Vector3());
-            const cam = sceneEl.camera;
-            const dist = cam.position.distanceTo(ctr);
-            const c = ctr.clone().project(cam);
-            const a = ctr.clone().add(new THREE.Vector3(size.x / 2, 0, 0)).project(cam);
-            const b = ctr.clone().add(new THREE.Vector3(-size.x / 2, 0, 0)).project(cam);
-            const px = Math.round(Math.abs(a.x - b.x) * innerWidth / 2);
-            const py = Math.round(Math.abs(a.y - b.y) * innerHeight / 2);
-            return size.x.toFixed(1) + "×" + size.y.toFixed(1) + "×" + size.z.toFixed(1) +
-              " d=" + dist.toFixed(2) + " ndc=" + c.x.toFixed(2) + "," + c.y.toFixed(2) + "," + c.z.toFixed(2) +
-              " px=" + px + "x" + py;
-          } catch (e) { return "err " + e.message; }
-        })();
+          out += "\ns " + o.scale.x.toFixed(4) + " pos " + o.position.x.toFixed(3) + "," +
+                 o.position.y.toFixed(3) + "," + o.position.z.toFixed(3);
+          const box = new THREE.Box3().setFromObject(o);
+          const size = box.getSize(new THREE.Vector3());
+          const ctr = box.getCenter(new THREE.Vector3());
+          const cam = sceneEl.camera;
+          const d = cam.position.distanceTo(ctr);
+          const c = ctr.clone().project(cam);
+          // anchor 的 1 单位在世界上有多大
+          const aw = new THREE.Vector3(), aq = new THREE.Quaternion(), ap = new THREE.Vector3();
+          currentModel.parentNode.object3D.matrixWorld.decompose(ap, aq, aw);
+          out += "\nbb " + size.x.toFixed(3) + " " + size.y.toFixed(3) + " " + size.z.toFixed(3) +
+                 "  page=" + (size.x / aw.x).toFixed(2) + "x";
+          out += "\nd " + d.toFixed(2) + " ndc " + c.x.toFixed(2) + " " + c.y.toFixed(2) + " " + c.z.toFixed(2);
+          out += "\nanc " + aw.x.toFixed(2) + " " + aw.y.toFixed(2) + " " + aw.z.toFixed(2) +
+                 "  cam " + cam.position.x.toFixed(2) + " " + cam.position.y.toFixed(2) + " " + cam.position.z.toFixed(2);
+        } catch (e) { out += "\nerr " + e.message; }
+      }
+      dbgEl.textContent = out;
     }, 700);
   }
 
