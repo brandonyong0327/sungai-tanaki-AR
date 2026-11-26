@@ -32,6 +32,13 @@
         font-size:1.05rem;line-height:1.8;color:var(--muted);display:none;z-index:5;padding:0 24px}
   a-scene{z-index:0}
   .a-canvas{touch-action:none!important}
+  @media (max-width:430px){
+    #hud{padding:12px 10px;gap:6px}
+    .pill{padding:10px 13px;font-size:.95rem}
+    #langbar{gap:4px}
+    #langbar button{min-width:42px;padding:9px 8px}
+    #viewReset{padding:10px 12px}
+  }
 </style>
 </head>
 <body>
@@ -40,6 +47,7 @@
   <div id="hud">
     <a class="pill" id="homeBtn" href="index.html">‹ Home</a>
     <div id="langbar"></div>
+    <button class="pill" id="viewReset" aria-label="reset view" title="Reset view">⟲</button>
     <button class="pill" id="soundBtn">🔊</button>
   </div>
 
@@ -116,8 +124,11 @@
     /* ---------------- 镜头：固定机位 + 绕模型 orbit + 捏合缩放 ---------------- */
     const camEl    = document.getElementById("cam");
     const turntable = document.getElementById("turntable");
-    const orbit = { tx: 0, ty: 0.4, tz: 0, dist: 3.5, min: 1.2, max: 14, az: 0, el: 12 };
+    const orbit = { tx: 0, ty: 0.4, tz: 0, dist: 3.5, min: 1.2, max: 14, az: 0, el: 18 };
     let camReady = false, userZoom = false;
+    let baseDist = 3.5;            // 每页适配后的“原始镜头”距离
+    const HOME_EL = 18;            // 原始镜头俯角
+    let returning = false;         // 是否正在回到原始镜头
 
     const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
@@ -134,40 +145,80 @@
     // 按包围盒的宽/高分别算所需距离，取更远的那个（横幅场景不会被缩得太小）
     function fitCamera() {
       const obj = modelEl.getObject3D("mesh");
-      const cam3 = camEl.getObject3D("camera");
+      const cam3 = camEl.getObject3D("camera") || sceneEl.camera;
       if (!obj || !cam3) return;
       sceneEl.object3D.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(obj);
       if (box.isEmpty()) return;
       const ctr = box.getCenter(new THREE.Vector3());
-      const halfW = Math.max(Math.abs(box.max.x - ctr.x), Math.abs(ctr.x - box.min.x));
-      const halfH = Math.max(Math.abs(box.max.y - ctr.y), Math.abs(ctr.y - box.min.y));
-      const halfD = Math.max(Math.abs(box.max.z - ctr.z), Math.abs(ctr.z - box.min.z));
-      orbit.tx = ctr.x; orbit.ty = ctr.y - halfH * 0.10; orbit.tz = ctr.z;
+      const size = box.getSize(new THREE.Vector3());
+      // 手机竖屏时 innerHeight 可能还没稳定，用画布实际尺寸兜底
+      const cvs = sceneEl.canvas;
+      const vw = (cvs && cvs.clientWidth) || window.innerWidth;
+      const vh = (cvs && cvs.clientHeight) || window.innerHeight;
+      const aspect = vw / vh;
+
+      const halfW = size.x / 2, halfH = size.y / 2, halfD = size.z / 2;
+      orbit.tx = ctr.x; orbit.ty = ctr.y - halfH * 0.08; orbit.tz = ctr.z;
 
       const vfov = ((cam3.fov || 50) * Math.PI) / 180;
-      const aspect = window.innerWidth / window.innerHeight;
       const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
       const dW = halfW / Math.tan(hfov / 2);
       const dH = halfH / Math.tan(vfov / 2);
-      const d = Math.max(dW, dH) + halfD * 0.9;
-      const final = d * 1.18;
+      let final = (Math.max(dW, dH) + halfD * 0.9) * 1.16;
+      if (!isFinite(final) || final <= 0) final = 4;
+      final = clamp(final, 0.6, 40);
 
-      orbit.dist = final;
+      baseDist = final;
       orbit.min = final * 0.35;
       orbit.max = final * 2.6;
-      if (!userZoom) { orbit.az = 0; orbit.el = 18; }
+      if (!userZoom) { orbit.dist = final; orbit.az = 0; orbit.el = HOME_EL; }
       camReady = true;
       applyCam();
     }
 
+    // 返回原始镜头（5 秒静置自动触发，也可点 ⟲）
+    function goHome() { returning = true; userZoom = false; }
+
+    function stepHome(dt) {
+      let dAz = -orbit.az;
+      dAz = ((dAz + 180) % 360 + 360) % 360 - 180;   // 走最短方向
+      const k = 1 - Math.exp(-dt / 0.30);
+      orbit.az += dAz * k;
+      orbit.el += (HOME_EL - orbit.el) * k;
+      orbit.dist += (baseDist - orbit.dist) * k;
+      if (Math.abs(dAz) < 0.6 && Math.abs(orbit.el - HOME_EL) < 0.6 &&
+          Math.abs(orbit.dist - baseDist) < 0.03) {
+        orbit.az = 0; orbit.el = HOME_EL; orbit.dist = baseDist;
+        returning = false;
+      }
+      applyCam();
+    }
+
+    // 把半透明材质收紧一点：避免叶片/烟雾互相“透视”，看起来像模型透明
+    function solidify(obj) {
+      obj.traverse(n => {
+        if (!n.isMesh) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        mats.forEach(m => {
+          if (!m) return;
+          m.side = THREE.DoubleSide;
+          if (m.transparent) {
+            m.alphaTest = 0.12;
+            m.depthWrite = true;
+            m.needsUpdate = true;
+          }
+        });
+      });
+    }
+
     /* ---------------- 手势 ---------------- */
-    const IDLE_MS = 7000;
+    const IDLE_MS = 5000;
     let autoRot = true, lastInteract = performance.now();
     const pointers = new Map();
     let pinchPrev = 0;
 
-    function markInteract() { lastInteract = performance.now(); autoRot = false; }
+    function markInteract() { lastInteract = performance.now(); autoRot = false; returning = false; }
 
     // 命中 UI 时不接管手势
     function onUI(e) {
@@ -238,9 +289,12 @@
       lastTick = now;
       if (mixer) mixer.update(dt);
 
-      // 闲置 7 秒恢复自转
-      if (!autoRot && now - lastInteract > IDLE_MS) autoRot = true;
-      if (autoRot) turntable.object3D.rotation.y += 0.35 * dt;
+      // 静置 5 秒：恢复自转，并缓缓回到原始镜头
+      if (!autoRot && now - lastInteract > IDLE_MS) { autoRot = true; goHome(); }
+      if (autoRot) {
+        if (returning) stepHome(dt);
+        turntable.object3D.rotation.y += 0.35 * dt;
+      }
 
       if (DBG && now - dbgLast > 250) {
         dbgLast = now;
@@ -265,8 +319,12 @@
     modelEl.addEventListener("model-loaded", () => {
       noteEl.style.display = "none";
       modelEl.setAttribute("visible", "true");
+      const obj = modelEl.getObject3D("mesh");
+      if (obj && params.get("solid") !== "0") solidify(obj);
       fitCamera();
       startAnim();
+      // 手机竖屏尺寸可能延迟才稳定，多算几次
+      [60, 400, 1200].forEach(t => setTimeout(fitCamera, t));
     });
 
     window.addEventListener("resize", () => setTimeout(fitCamera, 200));
@@ -306,6 +364,13 @@
       muted = !muted;
       audio.muted = muted;
       document.getElementById("soundBtn").textContent = muted ? "🔇" : "🔊";
+    };
+
+    document.getElementById("viewReset").onclick = () => {
+      lastInteract = performance.now();
+      autoRot = true;
+      turntable.object3D.rotation.y = 0;
+      goHome();
     };
 
     render();
