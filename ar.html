@@ -243,14 +243,14 @@
       const b = document.createElement("button");
       b.className = "chip" + (L.code === lang ? " active" : "");
       b.textContent = L.native;
-      b.onclick = () => { lang = L.code; localStorage.setItem("lang", lang); applyStrings(); if (activePage) playNarration(activePage); };
+      b.onclick = () => { lang = L.code; localStorage.setItem("lang", lang); applyStrings(); if (activePage) playNarration(activePage); prefetchAudio(); };
       chips.appendChild(b);
     });
 
     const sel = $("langSelect");
     sel.innerHTML = CONFIG.languages.map(L =>
       `<option value="${L.code}" ${L.code === lang ? "selected" : ""}>${L.label}</option>`).join("");
-    sel.onchange = () => { lang = sel.value; localStorage.setItem("lang", lang); applyStrings(); if (activePage) playNarration(activePage); };
+    sel.onchange = () => { lang = sel.value; localStorage.setItem("lang", lang); applyStrings(); if (activePage) playNarration(activePage); prefetchAudio(); };
 
     updatePlayUI();
   }
@@ -274,12 +274,28 @@
   function setModelLoading(on) { $("modelLoading").hidden = !on; }
 
   // ---------- 音频 ----------
+  let wantPlay = false;
+
   function playNarration(pageNo) {
     const p = CONFIG.pages[pageNo - 1];
     const src = p && p.audio[lang];
     if (!src) return;
-    audio.src = src; audio.currentTime = 0;
+    if (audio.getAttribute("src") !== src) audio.setAttribute("src", src);
+    audio.currentTime = 0;
+    wantPlay = true;
     audio.play().catch(() => {});
+    updatePlayUI();
+  }
+
+  // 后台把当前语言的 12 段旁白抓进浏览器缓存，扫到就能立刻出声
+  function prefetchAudio() {
+    const list = CONFIG.pages.map(p => p.audio && p.audio[lang]).filter(Boolean);
+    let i = 0;
+    (function next() {
+      if (i >= list.length) return;
+      const u = list[i++];
+      fetch(u, { cache: "force-cache" }).catch(() => {}).finally(() => setTimeout(next, 120));
+    })();
   }
   function updatePlayUI() {
     const playing = !audio.paused && !audio.ended;
@@ -410,9 +426,9 @@
     }
     activePage = pageNo;
     shownPage = pageNo;
+    playNarration(pageNo);          // 先出声，再加载模型
     setModelLoading(true);
     buildModel(pageNo);
-    playNarration(pageNo);
   }
   function onLost(ai) {
     const pageNo = CONFIG.targetMap[ai];
@@ -479,6 +495,7 @@
       $("topbar").hidden = false;
       $("viewfinder").hidden = false;
       setScanHint(true);
+      prefetchAudio();            // 相机一就绪就把旁白抓进缓存
     });
     sceneEl.addEventListener("arError", showError);
 
@@ -608,11 +625,18 @@
   }
 
   // ---------- 控制条 ----------
+  ["play", "pause", "ended"].forEach(ev => audio.addEventListener(ev, updatePlayUI));
+
+  // 浏览器若拦截了自动播放，用户下一次触屏时补播
+  document.addEventListener("pointerdown", () => {
+    if (wantPlay && activePage && audio.paused) audio.play().catch(() => {});
+  }, { passive: true });
+
   $("playBtn").onclick = () => {
     if (!activePage) return;
     if (audio.ended) playNarration(activePage);
-    else if (audio.paused) audio.play().catch(() => {});
-    else audio.pause();
+    else if (audio.paused) { wantPlay = true; audio.play().catch(() => {}); }
+    else { wantPlay = false; audio.pause(); }
     updatePlayUI();
   };
   $("replayBtn").onclick = () => { if (activePage) playNarration(activePage); };
