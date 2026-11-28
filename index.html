@@ -312,7 +312,7 @@
 </div>
 
 <audio id="sampleAudio" preload="none"></audio>
-<script src="config.js?v=38"></script>
+<script src="config.js?v=39"></script>
 <script>
   const params = new URLSearchParams(location.search);
   const HOME_CODES = ["en", "bm"];
@@ -420,7 +420,7 @@
     a.href = "viewer.html?page=" + num + "&lang=" + lang;
     const label = T.pageWord + " " + num;
     a.innerHTML = `<div class="ph">${num}</div>
-        <img src="${p.thumb}" alt="${label}" onerror="this.remove()"/>
+        <img src="${p.modelThumb}" alt="${label}" onerror="this.remove()"/>
         <span>${live.includes(num) ? "📷 " : ""}${label}</span>`;
     grid.appendChild(a);
   });
@@ -532,6 +532,9 @@
 </script>
 </body>
 </html>
+
+
+
 
 
 
